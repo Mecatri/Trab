@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Gestão de Instrumentação & Alarmes</title>
+    <title>P&ID Inspector Pro - Gestão de Instrumentação</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -11,8 +11,6 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .marker-dot {
             transform: translate(-50%, -50%);
@@ -26,7 +24,7 @@
         .no-select {
             user-select: none;
         }
-        /* Scrollbars customizadas */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -36,7 +34,7 @@
         }
         ::-webkit-scrollbar-thumb {
             background: #1f2937;
-            border-radius: 4px;
+            border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #374151;
@@ -46,54 +44,40 @@
 <body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
     <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
-    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-2.5 z-30 shadow-lg">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-30 shadow-md">
         <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-2">
                 <span class="text-xl">⚙️</span>
-                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900/80 text-blue-300 px-1.5 py-0.5 rounded font-mono border border-blue-700/50">PRO v3.0</span></h1>
+                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
             </div>
             <!-- ABAS SUPERIORES -->
-            <div class="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
-                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5">
-                    <i class="fa-solid fa-map-location-dot"></i> Visualizador P&ID
-                </button>
-                <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-contract"></i> Definições do Projeto
-                </button>
+            <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
+                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow">Visualizador P&ID</button>
+                <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
             </div>
         </div>
 
         <!-- CONTROLES DE PÁGINA, ZOOM E ARQUIVO -->
         <div class="flex flex-wrap items-center gap-2">
             <!-- Seletor de Arquivo PDF / Supabase -->
-            <div class="flex items-center gap-1 bg-gray-950 px-2 py-1 rounded-lg border border-gray-800 text-xs">
-                <label for="pdfFileInput" class="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1 font-medium">
-                    <i class="fa-solid fa-folder-open text-blue-400"></i> <span>Abrir PDF</span>
+            <div class="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700 text-xs">
+                <label for="pdfFileInput" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1">
+                    📂 <span>Abrir PDF</span>
                 </label>
                 <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="carregarPdfLocal(event)">
-                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px] transition" title="Restaurar PDF Padrão Supabase">Supabase</button>
+                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px]" title="Recarregar do Supabase Storage">Supabase</button>
             </div>
 
             <!-- Controles de Pág e Zoom -->
-            <div id="pidControls" class="flex items-center gap-1.5 bg-gray-950 px-2.5 py-1 rounded-lg border border-gray-800 text-xs">
-                <button onclick="mudarPagina(-1)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Página Anterior">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center font-mono">Pág: 1/1</span>
-                <button onclick="mudarPagina(1)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Próxima Página">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-
-                <div class="h-3 w-px bg-gray-800 mx-1"></div>
-
-                <button onclick="alterarZoom(-0.15)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Reduzir Zoom">
-                    <i class="fa-solid fa-minus"></i>
-                </button>
-                <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center font-mono">100%</span>
-                <button onclick="alterarZoom(0.15)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Aumentar Zoom">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-                <button onclick="resetarZoomFit()" class="px-2 py-0.5 bg-blue-600/30 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded text-[11px] font-semibold transition ml-1">Ajustar</button>
+            <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
+                <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
+                <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
+                <button onclick="mudarPagina(1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Próxima Página">▶</button>
+                <div class="h-3 w-px bg-gray-600 mx-1"></div>
+                <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Aumentar Zoom">+</button>
+                <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center">100%</span>
+                <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Diminuir Zoom">-</button>
+                <button onclick="resetarZoomFit()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium">Ajustar</button>
             </div>
         </div>
     </header>
@@ -102,8 +86,8 @@
     <div id="screenPid" class="flex flex-1 flex-col md:flex-row overflow-hidden relative">
         
         <!-- CANVAS DO PDF -->
-        <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing select-none" id="viewerContainer">
-            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800/80 rounded bg-white transition-transform duration-75 origin-top-left">
+        <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
+            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
                 <canvas id="pdfCanvas" class="block"></canvas>
                 <!-- SVG para as linhas de correlação entre instrumentos -->
                 <svg id="correlationsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
@@ -113,16 +97,14 @@
         </main>
 
         <!-- PAINEL LATERAL DE INSTRUMENTOS -->
-        <aside class="w-full md:w-96 lg:w-[420px] bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-3.5 overflow-y-auto max-h-[55vh] md:max-h-full z-30 shadow-2xl">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-2 mb-3">
-                <h2 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-sliders"></i> Configuração do Instrumento
-                </h2>
-                <span id="totalMarkersCount" class="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full font-mono">0 itens</span>
-            </div>
+        <aside class="w-full md:w-96 lg:w-[420px] bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[50vh] md:max-h-full z-30 shadow-xl">
+            <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center justify-between">
+                <span class="flex items-center gap-2"><span>📍</span> Configuração do Instrumento</span>
+                <span id="totalMarkersCount" class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full font-mono">0 itens</span>
+            </h2>
 
-            <div class="text-[11px] text-gray-400 bg-gray-950/70 p-2 rounded border border-gray-800 mb-3 leading-relaxed">
-                Clique no desenho do P&ID para situar um ponto de instrumento ou selecione um item na lista abaixo.
+            <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
+                Clique no PDF para posicionar um marcador ou escolha um da lista abaixo para editar.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
@@ -130,89 +112,70 @@
 
                 <div class="grid grid-cols-3 gap-2">
                     <div class="col-span-2">
-                        <label class="block font-semibold text-gray-400 mb-1">TAG / KKS *</label>
+                        <label class="block font-semibold text-gray-400 mb-0.5">TAG / KKS:</label>
                         <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
-                               class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
                     </div>
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-1">Tipo</label>
-                        <select id="inputType" class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                        <label class="block font-semibold text-gray-400 mb-0.5">Tipo:</label>
+                        <select id="inputType" class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white focus:outline-none focus:border-blue-500">
                             <option value="PT">Pressão (PT/PI)</option>
                             <option value="TT">Temperatura (TT/TI)</option>
                             <option value="FT">Vazão (FT/FI)</option>
                             <option value="LT">Nível (LT/LI)</option>
-                            <option value="XV">Válvula (XV/CV/MOV)</option>
-                            <option value="EL">Elétrico/Controle (KKS)</option>
-                            <option value="GEN" selected>Geral / Outros</option>
+                            <option value="XV">Válvula (XV/CV)</option>
+                            <option value="EL">Elétrico/Controle</option>
+                            <option value="GEN" selected>Outro / Geral</option>
                         </select>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-1">Descrição do Serviço</label>
-                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Entrada do Vapor Principal" 
-                           class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    <label class="block font-semibold text-gray-400 mb-0.5">Descrição:</label>
+                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Vapor TG-1" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-1">Range / Escala</label>
-                        <input type="text" id="inputRange" placeholder="0 - 150 bar" 
-                               class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 font-mono">
+                        <label class="block font-semibold text-gray-400 mb-0.5">Range / Escala:</label>
+                        <input type="text" id="inputRange" placeholder="Ex: 0 - 100 bar" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-1">Correlacionar com TAG</label>
+                        <label class="block font-semibold text-gray-400 mb-0.5">TAG Correlacionada:</label>
                         <input type="text" id="inputCorrelatedTag" placeholder="Ex: 10LBA10CT010" 
-                               class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
                     </div>
                 </div>
 
-                <!-- TABELA ESTRUTURADA DE ALARMES E TRIPS -->
-                <div class="bg-gray-950/80 border border-gray-800 rounded-lg p-2.5 space-y-2">
-                    <div class="flex items-center justify-between border-b border-gray-800 pb-1.5">
-                        <label class="font-bold text-gray-300 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-bell text-amber-400"></i> Matriz de Alarmes, Trips e Intertravamentos
+                <!-- TABELA DE ALARMES E TRIPS -->
+                <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800 space-y-2">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-1.5">
+                        <label class="font-bold text-blue-400 text-[11px] flex items-center gap-1">
+                            <span>🚨</span> Matriz de Alarmes e Intertravamentos
                         </label>
-                        <button type="button" onclick="adicionarLinhaAlarme()" class="text-[10px] bg-blue-600/30 text-blue-400 hover:bg-blue-600 hover:text-white px-2 py-0.5 rounded transition flex items-center gap-1 font-semibold">
-                            <i class="fa-solid fa-plus"></i> Add Alarme
+                        <button type="button" onclick="adicionarLinhaAlarme()" 
+                                class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded transition font-semibold">
+                            + Adicionar Alarme
                         </button>
                     </div>
 
-                    <!-- Conteúdo Tabela de Alarmes -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-[11px] border-collapse">
-                            <thead>
-                                <tr class="text-gray-400 border-b border-gray-800/80">
-                                    <th class="pb-1 w-24">Nível</th>
-                                    <th class="pb-1 w-24">Setpoint</th>
-                                    <th class="pb-1">Condição / Ação / Intertravamento</th>
-                                    <th class="pb-1 w-6"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="alarmsTableBody" class="divide-y divide-gray-800/50">
-                                <!-- Linhas de alarme geradas dinamicamente via JS -->
-                            </tbody>
-                        </table>
+                    <div id="alarmsContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        <!-- Linhas de alarme injetadas dinamicamente aqui -->
                     </div>
-                    <div id="noAlarmsMsg" class="text-[10px] text-gray-500 text-center py-1">Nenhum alarme cadastrado para este instrumento.</div>
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-1">Comentários / Observações Técnicas</label>
-                    <textarea id="inputComments" rows="2" placeholder="Notas de inspeção, modelo do transmissor, pendências..." 
-                              class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Comentários / Observações:</label>
+                    <textarea id="inputComments" rows="2" placeholder="Notas técnicas ou de comissionamento..." 
+                              class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
                 </div>
 
                 <div class="flex gap-2 pt-1">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-floppy-disk"></i> Salvar Instrumento
-                    </button>
-                    <button type="button" onclick="excluirMarcador()" class="bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-200 px-3 py-1.5 rounded transition" title="Excluir instrumento">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                    <button type="button" onclick="limparFormulario()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded transition" title="Limpar formulário">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow">Salvar Marcador</button>
+                    <button type="button" onclick="excluirMarcador()" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 px-3 py-1.5 rounded transition" title="Excluir selecionado">Excluir</button>
+                    <button type="button" onclick="limparFormulario()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded transition" title="Limpar formulário">Limpar</button>
                 </div>
             </form>
 
@@ -222,10 +185,10 @@
             <div class="flex flex-col gap-2 mb-2">
                 <div class="flex items-center justify-between">
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                        Instrumentos (Pág. <span id="currentPageNumDisplay">1</span>)
+                        Marcadores (Pág. <span id="currentPageNumDisplay">1</span>)
                     </h3>
-                    <input type="text" id="searchFilter" placeholder="Filtrar por TAG ou Ação..." oninput="renderMarkers()"
-                           class="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-blue-500 w-40">
+                    <input type="text" id="searchFilter" placeholder="Filtrar por TAG, alarme..." oninput="renderMarkers()"
+                           class="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-[11px] text-white focus:outline-none focus:border-blue-500 w-40">
                 </div>
             </div>
 
@@ -233,38 +196,30 @@
 
             <!-- FERRAMENTAS DE EXPORTAÇÃO E IMPORTAÇÃO -->
             <div class="border-t border-gray-800 pt-3 mt-3 grid grid-cols-3 gap-1.5">
-                <button onclick="exportarJson()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center flex items-center justify-center gap-1" title="Baixar Backup JSON completo">
-                    <i class="fa-solid fa-download text-blue-400"></i> JSON
-                </button>
-                <label class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center cursor-pointer flex items-center justify-center gap-1" title="Restaurar Backup JSON">
-                    <i class="fa-solid fa-upload text-emerald-400"></i> Importar
-                    <input type="file" accept=".json" class="hidden" onchange="importarJson(event)">
+                <button onclick="exportarJson()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Baixar Backup JSON">📥 Exportar</button>
+                <label class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center cursor-pointer" title="Restaurar Backup JSON">
+                    📤 Importar <input type="file" accept=".json" class="hidden" onchange="importarJson(event)">
                 </label>
-                <button onclick="exportarCsv()" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[11px] font-medium py-1.5 px-2 rounded transition text-center flex items-center justify-center gap-1" title="Exportar Planilha Excel/CSV">
-                    <i class="fa-solid fa-file-excel"></i> CSV
-                </button>
+                <button onclick="exportarCsv()" class="bg-gray-800 hover:bg-gray-700 text-blue-400 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Exportar Tabela CSV de Alarmes">📊 Relatório CSV</button>
             </div>
         </aside>
     </div>
 
     <!-- TELA 2: DEFINIÇÕES GERAIS -->
-    <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full overflow-y-auto">
+    <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
-            <h2 class="text-lg font-bold text-blue-400 flex items-center gap-2">
-                <i class="fa-solid fa-file-contract"></i> Definições Gerais, Escopo e Notas de Projeto
-            </h2>
-            <span id="defsSavedAlert" class="text-xs text-emerald-400 opacity-0 transition-opacity font-medium flex items-center gap-1">
-                <i class="fa-solid fa-check"></i> Salvo automaticamente
-            </span>
+            <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo automaticamente</span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
                   oninput="salvarDefinicoesGerais()"
-                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-mono shadow-inner"></textarea>
+                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
     <script>
-        const supabaseDefaultUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/1.pdf";
+        // NOVO LINK PADRÃO SUPABASE
+        const supabaseDefaultUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
         let currentPdfSource = supabaseDefaultUrl;
         
         let pdfDoc = null;
@@ -277,7 +232,6 @@
         let startX = 0;
         let startY = 0;
 
-        // Estrutura atualizada com suporte a lista de alarmes estruturados
         let markers = JSON.parse(localStorage.getItem('pid_inspector_markers_v5') || '[]');
         let selectedMarkerId = null;
         let pendingCoords = null;
@@ -287,7 +241,6 @@
         const wrapper = document.getElementById('canvasWrapper');
         const container = document.getElementById('viewerContainer');
 
-        // Cores por tipo de instrumento
         const typeColors = {
             PT: 'bg-amber-600 text-white',
             TT: 'bg-rose-600 text-white',
@@ -298,12 +251,12 @@
             GEN: 'bg-blue-600 text-white'
         };
 
-        const alarmBadges = {
-            'HH': 'bg-rose-600 text-white font-bold',
-            'H': 'bg-amber-500 text-black font-semibold',
-            'L': 'bg-blue-600 text-white font-semibold',
-            'LL': 'bg-indigo-600 text-white font-bold',
-            'CUSTOM': 'bg-gray-700 text-gray-200'
+        const alarmLevelColors = {
+            HH: 'bg-red-600 text-white font-bold',
+            H: 'bg-amber-500 text-black font-semibold',
+            L: 'bg-blue-500 text-white font-semibold',
+            LL: 'bg-purple-600 text-white font-bold',
+            OTHER: 'bg-gray-600 text-white'
         };
 
         async function init() {
@@ -312,7 +265,7 @@
                 carregarDefinicoesGerais();
             } catch (err) {
                 console.error("Erro ao carregar o PDF inicial:", err);
-                alert("Erro ao carregar o PDF padrão. Utilize o botão 'Abrir PDF' para carregar um arquivo local.");
+                alert("Erro ao carregar o PDF padrão do Supabase Storage. Você pode usar o botão 'Abrir PDF' para selecionar um arquivo local.");
             }
         }
 
@@ -431,81 +384,48 @@
             renderMarkers();
         });
 
-        // GERENCIAMENTO DA TABELA DE ALARMES NO FORMULÁRIO
-        function adicionarLinhaAlarme(tipo = 'H', setpoint = '', acao = '') {
-            const tbody = document.getElementById('alarmsTableBody');
+        // MANIPULAÇÃO DA TABELA DE ALARMES
+        function adicionarLinhaAlarme(data = { level: 'H', setpoint: '', action: '' }) {
+            const container = document.getElementById('alarmsContainer');
             const rowId = 'alarm_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
 
-            const tr = document.createElement('tr');
-            tr.id = rowId;
-            tr.className = "group hover:bg-gray-900/60 transition";
-            tr.innerHTML = `
-                <td class="py-1 pr-1">
-                    <select class="alarm-type-select w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white font-mono focus:border-blue-500">
-                        <option value="HH" ${tipo === 'HH' ? 'selected' : ''}>HH (Trava)</option>
-                        <option value="H" ${tipo === 'H' ? 'selected' : ''}>H (Alto)</option>
-                        <option value="L" ${tipo === 'L' ? 'selected' : ''}>L (Baixo)</option>
-                        <option value="LL" ${tipo === 'LL' ? 'selected' : ''}>LL (Trava)</option>
-                        <option value="CUSTOM" ${tipo === 'CUSTOM' ? 'selected' : ''}>Outro</option>
-                    </select>
-                </td>
-                <td class="py-1 px-1">
-                    <input type="text" value="${setpoint}" placeholder="Ex: 106 bar" 
-                           class="alarm-setpoint-input w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white font-mono focus:border-blue-500">
-                </td>
-                <td class="py-1 px-1">
-                    <input type="text" value="${acao}" placeholder="Ex: Trip de Bomba / Alarme DCS" 
-                           class="alarm-action-input w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white focus:border-blue-500">
-                </td>
-                <td class="py-1 pl-1 text-center">
-                    <button type="button" onclick="removerLinhaAlarme('${rowId}')" class="text-gray-500 hover:text-rose-400 transition" title="Remover alarme">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </td>
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-1.5 alarm-row';
+            div.id = rowId;
+
+            div.innerHTML = `
+                <select class="alarm-level bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-1 py-1 focus:outline-none focus:border-blue-500 w-24">
+                    <option value="HH" ${data.level === 'HH' ? 'selected' : ''}>HH (Trava/Trip)</option>
+                    <option value="H" ${data.level === 'H' ? 'selected' : ''}>H (Alto)</option>
+                    <option value="L" ${data.level === 'L' ? 'selected' : ''}>L (Baixo)</option>
+                    <option value="LL" ${data.level === 'LL' ? 'selected' : ''}>LL (Trava/Trip)</option>
+                    <option value="OTHER" ${data.level === 'OTHER' ? 'selected' : ''}>Outro</option>
+                </select>
+                <input type="text" placeholder="Setpoint (ex: 105 bar)" value="${data.setpoint || ''}"
+                       class="alarm-setpoint bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-2 py-1 w-28 focus:outline-none focus:border-blue-500">
+                <input type="text" placeholder="Condição / Ação (ex: Desarma TG-1)" value="${data.action || ''}"
+                       class="alarm-action flex-1 bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-2 py-1 focus:outline-none focus:border-blue-500">
+                <button type="button" onclick="document.getElementById('${rowId}').remove()" 
+                        class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded text-xs" title="Remover alarme">✕</button>
             `;
 
-            tbody.appendChild(tr);
-            atualizarVisibilidadeMensagemSemAlarmes();
+            container.appendChild(div);
         }
 
-        function removerLinhaAlarme(rowId) {
-            const elem = document.getElementById(rowId);
-            if (elem) elem.remove();
-            atualizarVisibilidadeMensagemSemAlarmes();
-        }
-
-        function atualizarVisibilidadeMensagemSemAlarmes() {
-            const tbody = document.getElementById('alarmsTableBody');
-            const msg = document.getElementById('noAlarmsMsg');
-            msg.style.display = tbody.children.length === 0 ? 'block' : 'none';
-        }
-
-        function obterAlarmesDoFormulario() {
-            const tbody = document.getElementById('alarmsTableBody');
-            const alarmes = [];
-            Array.from(tbody.children).forEach(tr => {
-                const tipo = tr.querySelector('.alarm-type-select').value;
-                const setpoint = tr.querySelector('.alarm-setpoint-input').value.trim();
-                const acao = tr.querySelector('.alarm-action-input').value.trim();
-
-                if (setpoint || acao) {
-                    alarmes.push({ tipo, setpoint, acao });
+        function obterAlarmesFormulario() {
+            const rows = document.querySelectorAll('.alarm-row');
+            const alarmsList = [];
+            rows.forEach(row => {
+                const level = row.querySelector('.alarm-level').value;
+                const setpoint = row.querySelector('.alarm-setpoint').value.trim();
+                const action = row.querySelector('.alarm-action').value.trim();
+                if (setpoint || action) {
+                    alarmsList.push({ level, setpoint, action });
                 }
             });
-            return alarmes;
+            return alarmsList;
         }
 
-        function preencherTabelaAlarmes(listaAlarmes) {
-            const tbody = document.getElementById('alarmsTableBody');
-            tbody.innerHTML = '';
-            if (Array.isArray(listaAlarmes) && listaAlarmes.length > 0) {
-                listaAlarmes.forEach(a => adicionarLinhaAlarme(a.tipo, a.setpoint, a.acao));
-            } else {
-                atualizarVisibilidadeMensagemSemAlarmes();
-            }
-        }
-
-        // SALVAR INSTRUMENTO NO LOCALSTORAGE
         function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim().toUpperCase();
             if (!tag) return alert('Informe a TAG / KKS do instrumento.');
@@ -516,12 +436,12 @@
             const range = document.getElementById('inputRange').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
             const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
-            const alarms = obterAlarmesDoFormulario();
+            const alarmTable = obterAlarmesFormulario();
 
             const existingIndex = markers.findIndex(m => m.id === id);
 
             if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, type, desc, range, alarms, comments, correlatedTag };
+                markers[existingIndex] = { ...markers[existingIndex], tag, type, desc, range, comments, correlatedTag, alarmTable };
             } else {
                 if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
                 markers.push({
@@ -533,9 +453,9 @@
                     type,
                     desc,
                     range,
-                    alarms,
                     comments,
-                    correlatedTag
+                    correlatedTag,
+                    alarmTable
                 });
             }
 
@@ -559,7 +479,7 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Desenhar linhas de correlação na página
+            // Linhas de correlação
             pageMarkers.forEach(m => {
                 if (m.correlatedTag) {
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
@@ -569,7 +489,7 @@
                         line.setAttribute('y1', `${m.y * 100}%`);
                         line.setAttribute('x2', `${target.x * 100}%`);
                         line.setAttribute('y2', `${target.y * 100}%`);
-                        line.setAttribute('stroke', '#fde047'); // Amarelo
+                        line.setAttribute('stroke', '#fde047');
                         line.setAttribute('stroke-width', '2');
                         line.setAttribute('stroke-dasharray', '5');
                         svgSvg.appendChild(line);
@@ -577,7 +497,7 @@
                 }
             });
 
-            // Ponto temporário de criação
+            // Ponto temporário
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
                 tempDot.className = 'absolute marker-dot w-6 h-6 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
@@ -588,15 +508,10 @@
 
             let visibleCount = 0;
             pageMarkers.forEach(m => {
-                const alarmesMatch = Array.isArray(m.alarms) && m.alarms.some(a => 
-                    a.tipo.toLowerCase().includes(filterText) || 
-                    a.setpoint.toLowerCase().includes(filterText) || 
-                    a.acao.toLowerCase().includes(filterText)
-                );
-
+                const alarmsSearchText = (m.alarmTable || []).map(a => `${a.level} ${a.setpoint} ${a.action}`).join(' ').toLowerCase();
                 const matchesFilter = m.tag.toLowerCase().includes(filterText) || 
-                                      (m.desc && m.desc.toLowerCase().includes(filterText)) || 
-                                      alarmesMatch;
+                                      (m.desc && m.desc.toLowerCase().includes(filterText)) ||
+                                      alarmsSearchText.includes(filterText);
 
                 if (!matchesFilter && filterText) return;
                 visibleCount++;
@@ -604,7 +519,6 @@
                 const isSelected = selectedMarkerId === m.id;
                 const colorClass = typeColors[m.type] || typeColors.GEN;
 
-                // Elemento no canvas
                 const wrapperElem = document.createElement('div');
                 wrapperElem.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
                 wrapperElem.style.left = `${m.x * 100}%`;
@@ -616,34 +530,31 @@
                 }`;
                 dot.innerHTML = '📍';
 
-                // Formatar lista de alarmes para Tooltip
-                let alarmesHtml = '';
-                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
-                    alarmesHtml = '<div class="mt-1.5 pt-1 border-t border-gray-800 space-y-0.5">';
-                    m.alarms.forEach(a => {
-                        const badgeClass = alarmBadges[a.tipo] || alarmBadges.CUSTOM;
-                        alarmesHtml += `
+                // Montar tabela de alarmes no tooltip
+                let alarmsHtml = '';
+                if (m.alarmTable && m.alarmTable.length > 0) {
+                    alarmsHtml = `<div class="mt-2 border-t border-gray-800 pt-1.5 space-y-1">`;
+                    m.alarmTable.forEach(a => {
+                        const levelColor = alarmLevelColors[a.level] || alarmLevelColors.OTHER;
+                        alarmsHtml += `
                             <div class="flex items-center gap-1 text-[10px]">
-                                <span class="px-1 rounded font-mono text-[9px] ${badgeClass}">${a.tipo}</span>
-                                <span class="font-mono text-gray-200">${a.setpoint}</span>
-                                <span class="text-gray-400 truncate">(${a.acao || 'Sem ação'})</span>
+                                <span class="px-1 py-0.2 rounded font-bold font-mono ${levelColor}">${a.level}</span>
+                                <span class="text-gray-200 font-medium">${a.setpoint || '-'}</span>
+                                <span class="text-gray-400 truncate">(${a.action || 'Sem ação'})</span>
                             </div>
                         `;
                     });
-                    alarmesHtml += '</div>';
+                    alarmsHtml += `</div>`;
                 }
 
                 const tooltip = document.createElement('div');
-                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900/95 backdrop-blur border border-gray-700 text-gray-100 p-2.5 rounded-lg shadow-2xl z-40 pointer-events-none text-xs';
+                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 border border-gray-700 text-gray-100 p-2.5 rounded-lg shadow-2xl z-40 pointer-events-none text-xs';
                 tooltip.innerHTML = `
-                    <div class="font-bold text-blue-400 flex justify-between items-center">
-                        <span class="font-mono">${m.tag}</span>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono ${colorClass}">${m.type}</span>
-                    </div>
+                    <div class="font-bold text-blue-400 flex justify-between"><span>${m.tag}</span><span class="text-[10px] bg-gray-800 px-1 rounded text-gray-300">${m.type}</span></div>
                     <div class="text-gray-300 mt-1">${m.desc || 'Sem descrição'}</div>
-                    ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5 font-mono">Range: ${m.range}</div>` : ''}
-                    ${alarmesHtml}
-                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 Correlacionado: ${m.correlatedTag}</div>` : ''}
+                    ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5">Range: ${m.range}</div>` : ''}
+                    ${alarmsHtml}
+                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 ${m.correlatedTag}</div>` : ''}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -656,21 +567,17 @@
                 listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
                     isSelected ? 'bg-gray-800 border-blue-500 shadow' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
                 }`;
-
-                let alarmesResumo = '';
-                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
-                    alarmesResumo = `<div class="flex flex-wrap gap-1 mt-1">` + 
-                        m.alarms.map(a => `<span class="text-[9px] px-1 rounded font-mono ${alarmBadges[a.tipo] || 'bg-gray-700'}">${a.tipo}: ${a.setpoint}</span>`).join('') +
-                        `</div>`;
-                }
-
                 listItem.innerHTML = `
                     <div class="flex justify-between items-center">
                         <span class="font-bold text-blue-400 font-mono">${m.tag}</span>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-mono ${colorClass}">${m.type}</span>
                     </div>
                     <div class="text-gray-400 truncate mt-0.5">${m.desc || 'Sem descrição'}</div>
-                    ${alarmesResumo}
+                    ${(m.alarmTable && m.alarmTable.length > 0) ? `
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            ${m.alarmTable.map(a => `<span class="text-[9px] px-1 py-0.1 rounded font-mono ${alarmLevelColors[a.level] || alarmLevelColors.OTHER}">${a.level}: ${a.setpoint}</span>`).join('')}
+                        </div>
+                    ` : ''}
                 `;
                 listItem.onclick = () => carregarMarcadorForm(m.id);
                 list.appendChild(listItem);
@@ -696,11 +603,10 @@
             document.getElementById('inputComments').value = m.comments || '';
             document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
 
-            // Suporte para retrocompatibilidade caso existam alarmes em string no modelo antigo
-            if (typeof m.alarms === 'string') {
-                preencherTabelaAlarmes([{ tipo: 'H', setpoint: m.alarms, acao: '' }]);
-            } else {
-                preencherTabelaAlarmes(m.alarms);
+            // Carregar tabela de alarmes
+            document.getElementById('alarmsContainer').innerHTML = '';
+            if (m.alarmTable && m.alarmTable.length > 0) {
+                m.alarmTable.forEach(a => adicionarLinhaAlarme(a));
             }
 
             renderMarkers();
@@ -740,7 +646,7 @@
             document.getElementById('inputRange').value = '';
             document.getElementById('inputComments').value = '';
             document.getElementById('inputCorrelatedTag').value = '';
-            preencherTabelaAlarmes([]);
+            document.getElementById('alarmsContainer').innerHTML = '';
         }
 
         // Exportar e Importar JSON
@@ -765,7 +671,7 @@
                         markers = imported;
                         localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
                         renderMarkers();
-                        alert('Backup de instrumentos importado com sucesso!');
+                        alert('Backup importado com sucesso!');
                     } else {
                         alert('Arquivo JSON inválido.');
                     }
@@ -776,29 +682,24 @@
             reader.readAsText(file);
         }
 
-        // Exportar Relatório CSV detalhado
+        // Exportar Relatório CSV detalhado por alarme
         function exportarCsv() {
-            if (markers.length === 0) return alert('Não há instrumentos cadastrados para exportar.');
-            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertravamento;TAG_Correlacionada;Comentarios\n';
-            
+            if (markers.length === 0) return alert('Não há marcadores para exportar.');
+            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertrava;TAG_Correlacionada;Comentarios\n';
             markers.forEach(m => {
-                const baseInfo = `"${m.id}";"${m.page}";"${m.tag}";"${m.type || 'GEN'}";"${(m.desc || '').replace(/"/g, '""')}";"${(m.range || '').replace(/"/g, '""')}"`;
-                const tailInfo = `"${m.correlatedTag || ''}";"${(m.comments || '').replace(/"/g, '""')}"`;
-
-                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
-                    m.alarms.forEach(a => {
-                        csv += `${baseInfo};"${a.tipo}";"${a.setpoint}";"${(a.acao || '').replace(/"/g, '""')}";${tailInfo}\n`;
+                if (m.alarmTable && m.alarmTable.length > 0) {
+                    m.alarmTable.forEach(a => {
+                        csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","${a.level}","${(a.setpoint || '').replace(/"/g, '""')}","${(a.action || '').replace(/"/g, '""')}","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
                     });
                 } else {
-                    csv += `${baseInfo};"";"";"";${tailInfo}\n`;
+                    csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","N/A","N/A","N/A","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
                 }
             });
-
             const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const dlAnchor = document.createElement('a');
             dlAnchor.setAttribute("href", url);
-            dlAnchor.setAttribute("download", `matriz_alarmes_pid_${new Date().toISOString().slice(0,10)}.csv`);
+            dlAnchor.setAttribute("download", `relatorio_alarmes_pid_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(dlAnchor);
             dlAnchor.click();
             dlAnchor.remove();
@@ -819,8 +720,8 @@
                 screenDefs.classList.remove('flex');
                 pidControls.classList.remove('hidden');
 
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5";
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
             } else {
                 screenDefs.classList.remove('hidden');
                 screenDefs.classList.add('flex');
@@ -828,8 +729,8 @@
                 screenPid.classList.remove('flex');
                 pidControls.classList.add('hidden');
 
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5";
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
             }
         }
 
