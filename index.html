@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inspector de P&ID - Teste Supabase</title>
+    <title>Inspector de P&ID - Supabase Storage</title>
     <!-- Tailwind CSS para estilo -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js para renderização do PDF -->
@@ -21,15 +21,22 @@
         .marker-wrapper:hover .marker-tooltip {
             display: block;
         }
+        /* Desabilita seleção acidental de texto ao arrastar o mouse para pan */
+        .no-select {
+            user-select: none;
+        }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans">
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
     <!-- CABEÇALHO DA APLICAÇÃO -->
     <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex justify-between items-center z-10">
         <div class="flex items-center gap-3">
             <span class="text-xl">⚙️</span>
-            <h1 class="text-lg font-bold text-blue-400">Inspector P&ID - Supabase Storage</h1>
+            <div>
+                <h1 class="text-lg font-bold text-blue-400 leading-tight">Inspector P&ID - Supabase Storage</h1>
+                <p class="text-[11px] text-gray-400">Dica: Segure <kbd class="bg-gray-800 border border-gray-700 px-1 py-0.5 rounded text-gray-300">Ctrl</kbd> + Roda do mouse para dar zoom no P&ID</p>
+            </div>
         </div>
 
         <!-- CONTROLES DE PÁGINA E ZOOM -->
@@ -40,9 +47,10 @@
             
             <div class="h-4 w-px bg-gray-600 mx-1"></div>
 
-            <button onclick="alterarZoom(0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm font-bold">+</button>
-            <span id="zoomInfo" class="text-xs text-gray-400">100%</span>
-            <button onclick="alterarZoom(-0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm font-bold">-</button>
+            <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm font-bold" title="Aumentar Zoom">+</button>
+            <span id="zoomInfo" class="text-xs text-gray-400 min-w-[45px] text-center">100%</span>
+            <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm font-bold" title="Diminuir Zoom">-</button>
+            <button onclick="resetarZoomFit()" class="px-2 py-1 bg-blue-600/80 hover:bg-blue-600 text-xs rounded transition" title="Ajustar à Tela">Ajustar</button>
         </div>
     </header>
 
@@ -50,77 +58,103 @@
     <div class="flex flex-1 overflow-hidden">
         
         <!-- VISUALIZADOR DO PDF COM CANVAS E CAMADA DE MARCADORES -->
-        <main class="flex-1 overflow-auto p-6 flex justify-center items-start relative bg-gray-950 cursor-crosshair" id="viewerContainer">
-            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white">
+        <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
+            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
                 <canvas id="pdfCanvas" class="block"></canvas>
                 <!-- Camada transparente para os marcadores -->
                 <div id="markersLayer" class="absolute inset-0 pointer-events-none"></div>
             </div>
         </main>
 
-        <!-- PAINEL LATERAL DE EDIÇÃO DOS MARCADORES -->
-        <aside class="w-96 bg-gray-900 border-l border-gray-800 flex flex-col p-5 overflow-y-auto z-10">
-            <h2 class="text-base font-bold text-blue-400 border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
-                <span>📍</span> Instrumento Selecionado
-            </h2>
-
-            <div id="formInstruction" class="text-xs text-gray-400 bg-gray-800/60 p-3 rounded border border-gray-700/50 mb-4">
-                Clique sobre qualquer instrumento ou local do PDF para posicionar um marcador e preencher suas informações.
+        <!-- PAINEL LATERAL COM ABAS (INSTRUMENTOS vs ANOTAÇÕES GERAIS) -->
+        <aside class="w-96 bg-gray-900 border-l border-gray-800 flex flex-col p-4 overflow-y-auto z-10">
+            
+            <!-- ABAS SUPERIORES -->
+            <div class="flex border-b border-gray-800 mb-4">
+                <button id="tabBtnInst" onclick="alternarAba('inst')" class="flex-1 pb-2 text-sm font-bold text-blue-400 border-b-2 border-blue-500 transition">
+                    📍 Instrumento
+                </button>
+                <button id="tabBtnNotes" onclick="alternarAba('notes')" class="flex-1 pb-2 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition">
+                    📝 Anotações Gerais
+                </button>
             </div>
 
-            <!-- FORMULÁRIO DE PROPRIEDADES -->
-            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-4">
-                <input type="hidden" id="markerId">
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">TAG / KKS:</label>
-                    <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+            <!-- CONTEÚDO DA ABA 1: INSTRUMENTO SELECIONADO -->
+            <div id="tabContentInst" class="flex flex-col flex-1 space-y-4">
+                <div id="formInstruction" class="text-xs text-gray-400 bg-gray-800/60 p-2.5 rounded border border-gray-700/50">
+                    Clique sobre qualquer instrumento do PDF para criar/posicionar um marcador ou selecione um existente na lista.
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">Descrição / Função:</label>
-                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Entrada do Vapor" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <!-- FORMULÁRIO DE PROPRIEDADES -->
+                <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3">
+                    <input type="hidden" id="markerId">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">TAG / KKS:</label>
+                        <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Descrição / Função:</label>
+                        <input type="text" id="inputDesc" placeholder="Ex: Pressão de Entrada do Vapor" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Faixa de Medição (Range):</label>
+                        <input type="text" id="inputRange" placeholder="Ex: 0 - 150 bar (g)" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Alarmes & Trips:</label>
+                        <input type="text" id="inputAlarms" placeholder="Ex: L1: 89 bar | H1: 106.1 bar | H2: 120 bar (Trip)" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Comentários do Instrumento:</label>
+                        <textarea id="inputComments" rows="3" placeholder="Insira observações de comissionamento..." 
+                                  class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded text-sm transition">
+                            Salvar Marcador
+                        </button>
+                        <button type="button" onclick="excluirMarcador()" class="bg-red-900/40 hover:bg-red-800 border border-red-700 text-red-200 px-3 py-1.5 rounded text-sm transition">
+                            Excluir
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="border-gray-800 my-2">
+
+                <!-- LISTA DE MARCADORES DA PÁGINA ATUAL -->
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Marcadores na Página <span id="currentPageNumDisplay">1</span>
+                </h3>
+                <div id="markersList" class="space-y-2 flex-1 overflow-y-auto max-h-52">
+                    <!-- Lista será preenchida via Javascript -->
                 </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">Faixa de Medição (Range):</label>
-                    <input type="text" id="inputRange" placeholder="Ex: 0 - 150 bar (g)" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">Alarmes & Trips:</label>
-                    <input type="text" id="inputAlarms" placeholder="Ex: L1: 89 bar | H1: 106.1 bar | H2: 120 bar (Trip)" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">Comentários & Anotações:</label>
-                    <textarea id="inputComments" rows="3" placeholder="Insira aqui observações de comissionamento..." 
-                              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded text-sm transition">
-                        Salvar Marcador
-                    </button>
-                    <button type="button" onclick="excluirMarcador()" class="bg-red-900/40 hover:bg-red-800 border border-red-700 text-red-200 px-4 py-2 rounded text-sm transition">
-                        Excluir
-                    </button>
-                </div>
-            </form>
-
-            <hr class="border-gray-800 my-6">
-
-            <!-- LISTA DE MARCADORES DA PÁGINA ATUAL -->
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                Marcadores na Página <span id="currentPageNumDisplay">1</span>
-            </h3>
-            <div id="markersList" class="space-y-2 flex-1 overflow-y-auto">
-                <!-- Lista será preenchida via Javascript -->
             </div>
+
+            <!-- CONTEÚDO DA ABA 2: ANOTAÇÕES GERAIS -->
+            <div id="tabContentNotes" class="hidden flex-col flex-1 space-y-4">
+                <div class="text-xs text-gray-400 bg-gray-800/60 p-2.5 rounded border border-gray-700/50">
+                    Espaço reservado para observações gerais sobre a folha do P&ID, diretrizes de projeto, pendências gerais e notas do sistema.
+                </div>
+
+                <div class="flex-1 flex flex-col">
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Anotações do Projeto / P&ID:</label>
+                    <textarea id="generalNotes" rows="16" placeholder="Escreva aqui suas anotações gerais..." 
+                              oninput="salvarAnotacoesGerais()"
+                              class="w-full flex-1 bg-gray-800 border border-gray-700 rounded p-3 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed"></textarea>
+                </div>
+                <div id="notesSavedAlert" class="text-[11px] text-green-400 text-right opacity-0 transition-opacity">✔ Salvo automaticamente</div>
+            </div>
+
         </aside>
     </div>
 
@@ -130,29 +164,54 @@
         
         let pdfDoc = null;
         let pageNum = 1;
-        let scale = 1.2;
+        let scale = 1.0;
+        let fitScale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
         let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers') || '[]');
         let selectedMarkerId = null;
         let pendingCoords = null;
 
         const canvas = document.getElementById('pdfCanvas');
         const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvasWrapper');
+        const container = document.getElementById('viewerContainer');
 
-        // Inicializar e carregar o PDF do Supabase
+        // Inicializar
         async function init() {
             try {
                 const loadingTask = pdfjsLib.getDocument(pdfUrl);
                 pdfDoc = await loadingTask.promise;
-                renderPage(pageNum);
+                carregarAnotacoesGerais();
+                await renderPage(pageNum, true); // true = Ajustar zoom inicial à tela
             } catch (err) {
                 console.error("Erro ao carregar o PDF:", err);
                 alert("Erro ao carregar o PDF do Supabase Storage. Verifique se o arquivo/bucket está público.");
             }
         }
 
-        // Renderizar página do PDF no Canvas
-        async function renderPage(num) {
+        // Renderizar página do PDF
+        async function renderPage(num, isInitial = false) {
             const page = await pdfDoc.getPage(num);
+
+            // Calcular escala ideal para ver todo o PDF no carregamento inicial
+            if (isInitial) {
+                const unscaledViewport = page.getViewport({ scale: 1.0 });
+                const containerW = container.clientWidth - 40;
+                const containerH = container.clientHeight - 40;
+                
+                const scaleX = containerW / unscaledViewport.width;
+                const scaleY = containerH / unscaledViewport.height;
+                fitScale = Math.min(scaleX, scaleY);
+                scale = fitScale;
+                panX = 0;
+                panY = 0;
+            }
+
             const viewport = page.getViewport({ scale: scale });
 
             canvas.height = viewport.height;
@@ -165,11 +224,21 @@
 
             await page.render(renderContext).promise;
 
+            atualizarTransformacaoCanvas();
+
             document.getElementById('pageInfo').textContent = `Página: ${num} / ${pdfDoc.numPages}`;
             document.getElementById('currentPageNumDisplay').textContent = num;
-            document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
+            document.getElementById('zoomInfo').textContent = `${Math.round((scale / fitScale) * 100)}%`;
 
             renderMarkers();
+        }
+
+        function atualizarTransformacaoCanvas() {
+            wrapper.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+
+        function resetarZoomFit() {
+            renderPage(pageNum, true);
         }
 
         function mudarPagina(delta) {
@@ -178,17 +247,47 @@
             if (novaPagina >= 1 && novaPagina <= pdfDoc.numPages) {
                 pageNum = novaPagina;
                 limparFormulario();
-                renderPage(pageNum);
+                renderPage(pageNum, true);
             }
         }
 
         function alterarZoom(delta) {
-            scale = Math.max(0.6, Math.min(3.0, scale + delta));
+            scale = Math.max(fitScale * 0.5, Math.min(fitScale * 5.0, scale + delta));
             renderPage(pageNum);
         }
 
-        // Capturar o clique no Canvas para posicionar um marcador
+        // CONTROL + SCROLL DO MOUSE PARA ZOOM
+        window.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) {
+                e.preventDefault(); // Impede o zoom nativo do navegador
+                const delta = e.deltaY < 0 ? 0.15 : -0.15;
+                alterarZoom(delta);
+            }
+        }, { passive: false });
+
+        // NAVEGAÇÃO / PAN POR CLIQUE E ARRASTE
+        container.addEventListener('mousedown', function(e) {
+            // Se clicar direto no canvas para criar um marcador, ignora o início do drag longo
+            if (e.target.closest('.marker-wrapper')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            atualizarTransformacaoCanvas();
+        });
+
+        window.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+
+        // CLIQUE NO CANVAS PARA POSICIONAR MARCADOR
         canvas.addEventListener('click', function(e) {
+            // Se tiver arrastado o PDF, não considera como clique de criação
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) / canvas.width;
             const y = (e.clientY - rect.top) / canvas.height;
@@ -207,7 +306,7 @@
             renderMarkers();
         });
 
-        // Salvar ou atualizar marcador
+        // Salvar Marcador
         function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim();
             if (!tag) return alert('Por favor, informe a TAG / KKS do instrumento.');
@@ -243,7 +342,7 @@
             renderMarkers();
         }
 
-        // Exibir marcadores na tela e na barra lateral
+        // Renderizar marcadores
         function renderMarkers() {
             const layer = document.getElementById('markersLayer');
             layer.innerHTML = '';
@@ -253,7 +352,7 @@
 
             const pageMarkers = markers.filter(m => m.page === pageNum);
 
-            // Renderizar marca provisória se houver um clique em andamento
+            // Ponto provisório de clique
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
                 tempDot.className = 'absolute marker-dot w-5 h-5 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
@@ -265,11 +364,10 @@
             pageMarkers.forEach(m => {
                 const isSelected = selectedMarkerId === m.id;
 
-                // Elemento do marcador visual sobre o PDF
-                const wrapper = document.createElement('div');
-                wrapper.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
-                wrapper.style.left = `${m.x * 100}%`;
-                wrapper.style.top = `${m.y * 100}%`;
+                const wrapperElem = document.createElement('div');
+                wrapperElem.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
+                wrapperElem.style.left = `${m.x * 100}%`;
+                wrapperElem.style.top = `${m.y * 100}%`;
 
                 const dot = document.createElement('div');
                 dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 ${
@@ -277,7 +375,7 @@
                 }`;
                 dot.innerHTML = '📍';
 
-                // Tooltip Flutuante ao passar o mouse
+                // Tooltip
                 const tooltip = document.createElement('div');
                 tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 border border-gray-700 text-gray-100 p-2.5 rounded shadow-xl z-30 pointer-events-none text-xs';
                 tooltip.innerHTML = `
@@ -287,19 +385,19 @@
                     ${m.alarms ? `<div class="text-amber-400 text-[10px] mt-1"><b>Alarmes:</b> ${m.alarms}</div>` : ''}
                 `;
 
-                wrapper.appendChild(dot);
-                wrapper.appendChild(tooltip);
+                wrapperElem.appendChild(dot);
+                wrapperElem.appendChild(tooltip);
 
-                wrapper.onclick = (e) => {
+                wrapperElem.onclick = (e) => {
                     e.stopPropagation();
                     carregarMarcadorForm(m.id);
                 };
 
-                layer.appendChild(wrapper);
+                layer.appendChild(wrapperElem);
 
-                // Elemento do item da Lista na Barra Lateral
+                // Item da Lista Lateral
                 const listItem = document.createElement('div');
-                listItem.className = `p-3 rounded-lg border text-sm cursor-pointer transition ${
+                listItem.className = `p-2.5 rounded-lg border text-sm cursor-pointer transition ${
                     isSelected ? 'bg-gray-800 border-blue-500' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
                 }`;
                 listItem.innerHTML = `
@@ -315,6 +413,7 @@
             const m = markers.find(item => item.id === id);
             if (!m) return;
 
+            alternarAba('inst');
             selectedMarkerId = m.id;
             pendingCoords = null;
 
@@ -349,6 +448,51 @@
             document.getElementById('inputRange').value = '';
             document.getElementById('inputAlarms').value = '';
             document.getElementById('inputComments').value = '';
+        }
+
+        // ALTERNAR ABAS LATERAIS
+        function alternarAba(aba) {
+            const tabInst = document.getElementById('tabContentInst');
+            const tabNotes = document.getElementById('tabContentNotes');
+            const btnInst = document.getElementById('tabBtnInst');
+            const btnNotes = document.getElementById('tabBtnNotes');
+
+            if (aba === 'inst') {
+                tabInst.classList.remove('hidden');
+                tabInst.classList.add('flex');
+                tabNotes.classList.add('hidden');
+                tabNotes.classList.remove('flex');
+
+                btnInst.className = "flex-1 pb-2 text-sm font-bold text-blue-400 border-b-2 border-blue-500 transition";
+                btnNotes.className = "flex-1 pb-2 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition";
+            } else {
+                tabNotes.classList.remove('hidden');
+                tabNotes.classList.add('flex');
+                tabInst.classList.add('hidden');
+                tabInst.classList.remove('flex');
+
+                btnNotes.className = "flex-1 pb-2 text-sm font-bold text-blue-400 border-b-2 border-blue-500 transition";
+                btnInst.className = "flex-1 pb-2 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition";
+            }
+        }
+
+        // GERENCIAMENTO DE ANOTAÇÕES GERAIS
+        let notesTimer = null;
+        function salvarAnotacoesGerais() {
+            const notesText = document.getElementById('generalNotes').value;
+            localStorage.setItem('supabase_pdf_general_notes', notesText);
+
+            const alertElem = document.getElementById('notesSavedAlert');
+            alertElem.style.opacity = '1';
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(() => {
+                alertElem.style.opacity = '0';
+            }, 1500);
+        }
+
+        function carregarAnotacoesGerais() {
+            const savedNotes = localStorage.getItem('supabase_pdf_general_notes') || '';
+            document.getElementById('generalNotes').value = savedNotes;
         }
 
         // Executar na inicialização da página
