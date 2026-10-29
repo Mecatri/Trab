@@ -70,6 +70,493 @@
         </main>
 
         <!-- PAINEL LATERAL DE INSTRUMENTOS -->
+        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[45vh] md:max-h-full z-30">
+            <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center gap-2">
+                <span>📍</span> Configuração do Instrumento
+            </h2>
+
+            <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3">
+                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
+            </div>
+
+            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-2.5 text-xs">
+                <input type="hidden" id="markerId">
+
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">TAG / KKS:</label>
+                    <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Descrição:</label>
+                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Entrada do Vapor" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold text-gray-400 mb-0.5">Range:</label>
+                        <input type="text" id="inputRange" placeholder="0 - 150 bar" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-400 mb-0.5">Alarmes / Trips:</label>
+                        <input type="text" id="inputAlarms" placeholder="H1: 106 bar" 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Correlacionar com outra TAG:</label>
+                    <input type="text" id="inputCorrelatedTag" placeholder="Digite a TAG exata (ex: 10LBA10CT010)" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    <span class="text-[10px] text-gray-500">A linha amarela aparecerá ligando as TAGs.</span>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Comentários:</label>
+                    <textarea id="inputComments" rows="2" placeholder="Observações..." 
+                              class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition">Salvar</button>
+                    <button type="button" onclick="excluirMarcador()" class="bg-red-900/40 hover:bg-red-800 border border-red-700 text-red-200 px-3 py-1.5 rounded transition">Excluir</button>
+                </div>
+            </form>
+
+            <hr class="border-gray-800 my-3">
+
+            <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Marcadores na Pág. <span id="currentPageNumDisplay">1</span>
+            </h3>
+            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-40"></div>
+        </aside>
+    </div>
+
+    <!-- TELA 2: DEFINIÇÕES GERAIS -->
+    <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
+        <h2 class="text-lg font-bold text-blue-400 mb-2">Definições Gerais e Notas do Projeto</h2>
+        <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, escopo e notas técnicas que se aplicam ao fluxograma.</p>
+        <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
+                  oninput="salvarDefinicoesGerais()"
+                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed"></textarea>
+        <div id="defsSavedAlert" class="text-xs text-green-400 text-right mt-2 opacity-0 transition-opacity">✔ Salvo automaticamente no navegador</div>
+    </div>
+
+    <script>
+        const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/1.pdf";
+        
+        let pdfDoc = null;
+        let pageNum = 1;
+        let scale = 1.0;
+        let fitScale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v3') || '[]');
+        let selectedMarkerId = null;
+        let pendingCoords = null;
+
+        const canvas = document.getElementById('pdfCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvasWrapper');
+        const container = document.getElementById('viewerContainer');
+
+        async function init() {
+            try {
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                pdfDoc = await loadingTask.promise;
+                carregarDefinicoesGerais();
+                await renderPage(pageNum, true);
+            } catch (err) {
+                console.error("Erro ao carregar o PDF:", err);
+                alert("Erro ao carregar o PDF do Supabase Storage.");
+            }
+        }
+
+        async function renderPage(num, isInitial = false) {
+            const page = await pdfDoc.getPage(num);
+
+            if (isInitial) {
+                const unscaledViewport = page.getViewport({ scale: 1.0 });
+                const containerW = container.clientWidth - 40;
+                const containerH = container.clientHeight - 40;
+                
+                const scaleX = containerW / unscaledViewport.width;
+                const scaleY = containerH / unscaledViewport.height;
+                fitScale = Math.min(scaleX, scaleY);
+                scale = fitScale;
+                panX = 0;
+                panY = 0;
+            }
+
+            const viewport = page.getViewport({ scale: scale });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            atualizarTransformacaoCanvas();
+            document.getElementById('pageInfo').textContent = `Pág: ${num}/${pdfDoc.numPages}`;
+            document.getElementById('currentPageNumDisplay').textContent = num;
+            document.getElementById('zoomInfo').textContent = `${Math.round((scale / fitScale) * 100)}%`;
+
+            renderMarkers();
+        }
+
+        function atualizarTransformacaoCanvas() {
+            wrapper.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+
+        function resetarZoomFit() {
+            renderPage(pageNum, true);
+        }
+
+        function mudarPagina(delta) {
+            if (!pdfDoc) return;
+            const novaPagina = pageNum + delta;
+            if (novaPagina >= 1 && novaPagina <= pdfDoc.numPages) {
+                pageNum = novaPagina;
+                limparFormulario();
+                renderPage(pageNum, true);
+            }
+        }
+
+        function alterarZoom(delta) {
+            scale = Math.max(fitScale * 0.5, Math.min(fitScale * 5.0, scale + delta));
+            renderPage(pageNum);
+        }
+
+        // Zoom com Ctrl + Scroll
+        window.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                alterarZoom(e.deltaY < 0 ? 0.15 : -0.15);
+            }
+        }, { passive: false });
+
+        // Pan por arrasto
+        container.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.marker-wrapper')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            atualizarTransformacaoCanvas();
+        });
+
+        window.addEventListener('mouseup', function() { isDragging = false; });
+
+        // Clique para criar marcador
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / canvas.width;
+            const y = (e.clientY - rect.top) / canvas.height;
+
+            pendingCoords = { x, y };
+            selectedMarkerId = null;
+            limparFormularioCampos();
+            document.getElementById('inputTag').focus();
+            renderMarkers();
+        });
+
+        function salvarMarcador() {
+            const tag = document.getElementById('inputTag').value.trim();
+            if (!tag) return alert('Informe a TAG / KKS.');
+
+            const id = document.getElementById('markerId').value || Date.now().toString();
+            const desc = document.getElementById('inputDesc').value.trim();
+            const range = document.getElementById('inputRange').value.trim();
+            const alarms = document.getElementById('inputAlarms').value.trim();
+            const comments = document.getElementById('inputComments').value.trim();
+            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim();
+
+            const existingIndex = markers.findIndex(m => m.id === id);
+
+            if (existingIndex >= 0) {
+                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, alarms, comments, correlatedTag };
+            } else {
+                if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
+                markers.push({
+                    id,
+                    page: pageNum,
+                    x: pendingCoords.x,
+                    y: pendingCoords.y,
+                    tag,
+                    desc,
+                    range,
+                    alarms,
+                    comments,
+                    correlatedTag
+                });
+            }
+
+            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            selectedMarkerId = id;
+            pendingCoords = null;
+            renderMarkers();
+        }
+
+        function renderMarkers() {
+            const layer = document.getElementById('markersLayer');
+            const svgSvg = document.getElementById('correlationsSvg');
+            layer.innerHTML = '';
+            svgSvg.innerHTML = '';
+
+            const list = document.getElementById('markersList');
+            list.innerHTML = '';
+
+            const pageMarkers = markers.filter(m => m.page === pageNum);
+
+            // Desenhar linhas de correlação baseadas na TAG digitada
+            pageMarkers.forEach(m => {
+                if (m.correlatedTag) {
+                    // Procurar outro marcador na mesma página com a TAG informada
+                    const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
+                    if (target) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', `${m.x * 100}%`);
+                        line.setAttribute('y1', `${m.y * 100}%`);
+                        line.setAttribute('x2', `${target.x * 100}%`);
+                        line.setAttribute('y2', `${target.y * 100}%`);
+                        line.setAttribute('stroke', '#fde047'); // Amarelo claro (yellow-300)
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('stroke-dasharray', '4');
+                        svgSvg.appendChild(line);
+                    }
+                }
+            });
+
+            // Ponto temporário
+            if (pendingCoords && !selectedMarkerId) {
+                const tempDot = document.createElement('div');
+                tempDot.className = 'absolute marker-dot w-5 h-5 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
+                tempDot.style.left = `${pendingCoords.x * 100}%`;
+                tempDot.style.top = `${pendingCoords.y * 100}%`;
+                layer.appendChild(tempDot);
+            }
+
+            pageMarkers.forEach(m => {
+                const isSelected = selectedMarkerId === m.id;
+
+                const wrapperElem = document.createElement('div');
+                wrapperElem.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
+                wrapperElem.style.left = `${m.x * 100}%`;
+                wrapperElem.style.top = `${m.y * 100}%`;
+
+                const dot = document.createElement('div');
+                dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 ${
+                    isSelected ? 'bg-yellow-400 text-black font-bold ring-4 ring-yellow-300/50' : 'bg-blue-600 text-white'
+                }`;
+                dot.innerHTML = '📍';
+
+                const tooltip = document.createElement('div');
+                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 border border-gray-700 text-gray-100 p-2 rounded shadow-xl z-40 pointer-events-none text-xs';
+                tooltip.innerHTML = `
+                    <div class="font-bold text-blue-400">${m.tag}</div>
+                    <div class="text-gray-300 mt-0.5">${m.desc || 'Sem descrição'}</div>
+                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1">🔗 Ligado a: ${m.correlatedTag}</div>` : ''}
+                `;
+
+                wrapperElem.appendChild(dot);
+                wrapperElem.appendChild(tooltip);
+                wrapperElem.onclick = (e) => { e.stopPropagation(); carregarMarcadorForm(m.id); };
+                layer.appendChild(wrapperElem);
+
+                // Lista lateral
+                const listItem = document.createElement('div');
+                listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
+                    isSelected ? 'bg-gray-800 border-blue-500' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
+                }`;
+                listItem.innerHTML = `<div class="font-bold text-blue-400">${m.tag}</div><div class="text-gray-400 truncate">${m.desc || 'Sem descrição'}</div>`;
+                listItem.onclick = () => carregarMarcadorForm(m.id);
+                list.appendChild(listItem);
+            });
+        }
+
+        function carregarMarcadorForm(id) {
+            const m = markers.find(item => item.id === id);
+            if (!m) return;
+
+            selectedMarkerId = m.id;
+            pendingCoords = null;
+
+            document.getElementById('markerId').value = m.id;
+            document.getElementById('inputTag').value = m.tag;
+            document.getElementById('inputDesc').value = m.desc || '';
+            document.getElementById('inputRange').value = m.range || '';
+            document.getElementById('inputAlarms').value = m.alarms || '';
+            document.getElementById('inputComments').value = m.comments || '';
+            document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
+
+            renderMarkers();
+        }
+
+        function excluirMarcador() {
+            const id = document.getElementById('markerId').value;
+            if (!id) return alert('Selecione um marcador.');
+
+            markers = markers.filter(m => m.id !== id);
+            // Limpar referências de correlação que apontavam para este marcador
+            const tagExcluida = document.getElementById('inputTag').value.trim();
+            markers.forEach(m => {
+                if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
+                    m.correlatedTag = '';
+                }
+            });
+
+            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            limparFormulario();
+            renderMarkers();
+        }
+
+        function limparFormulario() {
+            selectedMarkerId = null;
+            pendingCoords = null;
+            limparFormularioCampos();
+        }
+
+        function limparFormularioCampos() {
+            document.getElementById('markerId').value = '';
+            document.getElementById('inputTag').value = '';
+            document.getElementById('inputDesc').value = '';
+            document.getElementById('inputRange').value = '';
+            document.getElementById('inputAlarms').value = '';
+            document.getElementById('inputComments').value = '';
+            document.getElementById('inputCorrelatedTag').value = '';
+        }
+
+        // ABAS PRINCIPAIS
+        function alternarTelaPrincipal(tela) {
+            const screenPid = document.getElementById('screenPid');
+            const screenDefs = document.getElementById('screenDefs');
+            const btnPid = document.getElementById('topTabPid');
+            const btnDefs = document.getElementById('topTabDefs');
+            const pidControls = document.getElementById('pidControls');
+
+            if (tela === 'pid') {
+                screenPid.classList.remove('hidden');
+                screenPid.classList.add('flex');
+                screenDefs.classList.add('hidden');
+                screenDefs.classList.remove('flex');
+                pidControls.classList.remove('hidden');
+
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+            } else {
+                screenDefs.classList.remove('hidden');
+                screenDefs.classList.add('flex');
+                screenPid.classList.add('hidden');
+                screenPid.classList.remove('flex');
+                pidControls.classList.add('hidden');
+
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+            }
+        }
+
+        // GERENCIAR DEFINIÇÕES GERAIS
+        let defsTimer = null;
+        function salvarDefinicoesGerais() {
+            const text = document.getElementById('generalDefinitions').value;
+            localStorage.setItem('supabase_pdf_general_defs', text);
+
+            const alertElem = document.getElementById('defsSavedAlert');
+            alertElem.style.opacity = '1';
+            clearTimeout(defsTimer);
+            defsTimer = setTimeout(() => { alertElem.style.opacity = '0'; }, 1500);
+        }
+
+        function carregarDefinicoesGerais() {
+            const saved = localStorage.getItem('supabase_pdf_general_defs') || '';
+            document.getElementById('generalDefinitions').value = saved;
+        }
+
+        init();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspector de P&ID - Supabase Storage</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        .marker-dot {
+            transform: translate(-50%, -50%);
+        }
+        .marker-tooltip {
+            display: none;
+        }
+        .marker-wrapper:hover .marker-tooltip {
+            display: block;
+        }
+        .no-select {
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
+
+    <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-20">
+        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">⚙️</span>
+                <h1 class="text-base font-bold text-blue-400">P&ID Inspector</h1>
+            </div>
+            <!-- ABAS SUPERIORES -->
+            <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
+                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition">Visualizador P&ID</button>
+                <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
+            </div>
+        </div>
+
+        <!-- CONTROLES DE PÁGINA E ZOOM -->
+        <div id="pidControls" class="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
+            <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">◀</button>
+            <span id="pageInfo" class="font-semibold text-gray-300">Pág: 1/1</span>
+            <button onclick="mudarPagina(1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">▶</button>
+            <div class="h-3 w-px bg-gray-600 mx-1"></div>
+            <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold">+</button>
+            <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center">100%</span>
+            <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold">-</button>
+            <button onclick="resetarZoomFit()" class="px-2 py-1 bg-blue-600 text-white rounded">Ajustar</button>
+        </div>
+    </header>
+
+    <!-- TELA 1: VISUALIZADOR P&ID + PAINEL DE INSTRUMENTOS -->
+    <div id="screenPid" class="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- CANVAS DO PDF -->
+        <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
+            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
+                <canvas id="pdfCanvas" class="block"></canvas>
+                <!-- SVG para as linhas de correlação entre instrumentos -->
+                <svg id="correlationsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
+                <!-- Camada de marcadores -->
+                <div id="markersLayer" class="absolute inset-0 pointer-events-none z-20"></div>
+            </div>
+        </main>
+
+        <!-- PAINEL LATERAL DE INSTRUMENTOS -->
         <aside class="w-full md:w-96 lg:w-[420px] bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[50vh] md:max-h-full z-30">
             <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center gap-2">
                 <span>📍</span> Configuração do Instrumento
