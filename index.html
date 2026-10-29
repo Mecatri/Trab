@@ -35,14 +35,14 @@
                 <span class="text-xl">⚙️</span>
                 <h1 class="text-base font-bold text-blue-400">P&ID Inspector</h1>
             </div>
-            <!-- ABAS SUPERIORES (P&ID vs Definições Gerais) -->
+            <!-- ABAS SUPERIORES -->
             <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
                 <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition">Visualizador P&ID</button>
                 <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
             </div>
         </div>
 
-        <!-- CONTROLES DE PÁGINA E ZOOM (Aparecem apenas na tela P&ID) -->
+        <!-- CONTROLES DE PÁGINA E ZOOM -->
         <div id="pidControls" class="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
             <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">◀</button>
             <span id="pageInfo" class="font-semibold text-gray-300">Pág: 1/1</span>
@@ -76,7 +76,7 @@
             </h2>
 
             <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3">
-                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar e criar correlações.
+                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-2.5 text-xs">
@@ -108,11 +108,10 @@
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-0.5">Correlacionar com outros instrumentos:</label>
-                    <select id="selectCorrelations" multiple class="w-full bg-gray-800 border border-gray-700 rounded p-1 text-white text-[11px] h-16 focus:outline-none focus:border-blue-500">
-                        <!-- Preenchido via JS -->
-                    </select>
-                    <span class="text-[10px] text-gray-500">Segure Ctrl para selecionar múltiplos.</span>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Correlacionar com outra TAG:</label>
+                    <input type="text" id="inputCorrelatedTag" placeholder="Digite a TAG exata (ex: 10LBA10CT010)" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    <span class="text-[10px] text-gray-500">A linha amarela aparecerá ligando as TAGs.</span>
                 </div>
 
                 <div>
@@ -136,7 +135,7 @@
         </aside>
     </div>
 
-    <!-- TELA 2: DEFINIÇÕES GERAIS (Aba Separada em Tela Cheia) -->
+    <!-- TELA 2: DEFINIÇÕES GERAIS -->
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <h2 class="text-lg font-bold text-blue-400 mb-2">Definições Gerais e Notas do Projeto</h2>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, escopo e notas técnicas que se aplicam ao fluxograma.</p>
@@ -159,7 +158,7 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v2') || '[]');
+        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v3') || '[]');
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -267,7 +266,6 @@
             pendingCoords = { x, y };
             selectedMarkerId = null;
             limparFormularioCampos();
-            atualizarSelectCorrelacao();
             document.getElementById('inputTag').focus();
             renderMarkers();
         });
@@ -281,15 +279,12 @@
             const range = document.getElementById('inputRange').value.trim();
             const alarms = document.getElementById('inputAlarms').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
-            
-            // Pegar instrumentos correlacionados selecionados
-            const select = document.getElementById('selectCorrelations');
-            const correlations = Array.from(select.selectedOptions).map(opt => opt.value);
+            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim();
 
             const existingIndex = markers.findIndex(m => m.id === id);
 
             if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, alarms, comments, correlations };
+                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, alarms, comments, correlatedTag };
             } else {
                 if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
                 markers.push({
@@ -302,11 +297,11 @@
                     range,
                     alarms,
                     comments,
-                    correlations
+                    correlatedTag
                 });
             }
 
-            localStorage.setItem('supabase_pdf_markers_v2', JSON.stringify(markers));
+            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
@@ -323,23 +318,22 @@
 
             const pageMarkers = markers.filter(m => m.page === pageNum);
 
-            // Desenhar linhas de correlação (amarelo claro)
+            // Desenhar linhas de correlação baseadas na TAG digitada
             pageMarkers.forEach(m => {
-                if (m.correlations && m.correlations.length > 0) {
-                    m.correlations.forEach(targetId => {
-                        const target = pageMarkers.find(t => t.id === targetId);
-                        if (target) {
-                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            line.setAttribute('x1', `${m.x * 100}%`);
-                            line.setAttribute('y1', `${m.y * 100}%`);
-                            line.setAttribute('x2', `${target.x * 100}%`);
-                            line.setAttribute('y2', `${target.y * 100}%`);
-                            line.setAttribute('stroke', '#fde047'); // Amarelo claro (yellow-300)
-                            line.setAttribute('stroke-width', '2');
-                            line.setAttribute('stroke-dasharray', '4');
-                            svgSvg.appendChild(line);
-                        }
-                    });
+                if (m.correlatedTag) {
+                    // Procurar outro marcador na mesma página com a TAG informada
+                    const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
+                    if (target) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', `${m.x * 100}%`);
+                        line.setAttribute('y1', `${m.y * 100}%`);
+                        line.setAttribute('x2', `${target.x * 100}%`);
+                        line.setAttribute('y2', `${target.y * 100}%`);
+                        line.setAttribute('stroke', '#fde047'); // Amarelo claro (yellow-300)
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('stroke-dasharray', '4');
+                        svgSvg.appendChild(line);
+                    }
                 }
             });
 
@@ -371,7 +365,7 @@
                 tooltip.innerHTML = `
                     <div class="font-bold text-blue-400">${m.tag}</div>
                     <div class="text-gray-300 mt-0.5">${m.desc || 'Sem descrição'}</div>
-                    ${m.range ? `<div class="text-gray-400 mt-1">Range: ${m.range}</div>` : ''}
+                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1">🔗 Ligado a: ${m.correlatedTag}</div>` : ''}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -388,20 +382,6 @@
                 listItem.onclick = () => carregarMarcadorForm(m.id);
                 list.appendChild(listItem);
             });
-            atualizarSelectCorrelacao();
-        }
-
-        function atualizarSelectCorrelacao() {
-            const select = document.getElementById('selectCorrelations');
-            const currentId = document.getElementById('markerId').value;
-            select.innerHTML = '';
-
-            markers.filter(m => m.page === pageNum && m.id !== currentId).forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = `${m.tag} (${m.desc || 'Sem desc'})`;
-                select.appendChild(opt);
-            });
         }
 
         function carregarMarcadorForm(id) {
@@ -417,16 +397,7 @@
             document.getElementById('inputRange').value = m.range || '';
             document.getElementById('inputAlarms').value = m.alarms || '';
             document.getElementById('inputComments').value = m.comments || '';
-
-            atualizarSelectCorrelacao();
-
-            // Marcar correlações selecionadas
-            const select = document.getElementById('selectCorrelations');
-            if (m.correlations) {
-                Array.from(select.options).forEach(opt => {
-                    opt.selected = m.correlations.includes(opt.value);
-                });
-            }
+            document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
 
             renderMarkers();
         }
@@ -436,12 +407,15 @@
             if (!id) return alert('Selecione um marcador.');
 
             markers = markers.filter(m => m.id !== id);
-            // Remover também de outras correlações
+            // Limpar referências de correlação que apontavam para este marcador
+            const tagExcluida = document.getElementById('inputTag').value.trim();
             markers.forEach(m => {
-                if (m.correlations) m.correlations = m.correlations.filter(cId => cId !== id);
+                if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
+                    m.correlatedTag = '';
+                }
             });
 
-            localStorage.setItem('supabase_pdf_markers_v2', JSON.stringify(markers));
+            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
             limparFormulario();
             renderMarkers();
         }
@@ -450,7 +424,6 @@
             selectedMarkerId = null;
             pendingCoords = null;
             limparFormularioCampos();
-            atualizarSelectCorrelacao();
         }
 
         function limparFormularioCampos() {
@@ -460,11 +433,10 @@
             document.getElementById('inputRange').value = '';
             document.getElementById('inputAlarms').value = '';
             document.getElementById('inputComments').value = '';
-            const select = document.getElementById('selectCorrelations');
-            Array.from(select.options).forEach(opt => opt.selected = false);
+            document.getElementById('inputCorrelatedTag').value = '';
         }
 
-        // ABAS PRINCIPAIS (P&ID vs Definições)
+        // ABAS PRINCIPAIS
         function alternarTelaPrincipal(tela) {
             const screenPid = document.getElementById('screenPid');
             const screenDefs = document.getElementById('screenDefs');
