@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Colaborativo</title>
+    <title>P&ID Inspector Pro - Colaborativo P2P</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -11,6 +11,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
+    <!-- GunDB para Sincronização P2P sem Conta/Login -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
         .marker-dot { transform: translate(-50%, -50%); }
         .marker-tooltip { display: none; }
@@ -32,9 +34,9 @@
                 <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
                 
                 <!-- INDICADOR DE STATUS DA NUVEM -->
-                <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-yellow-900/60 text-yellow-300 border border-yellow-700/50 flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
-                    <span>Conectando...</span>
+                <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Ao vivo (P2P)</span>
                 </span>
             </div>
 
@@ -45,13 +47,8 @@
             </div>
         </div>
 
-        <!-- CONTROLES DE PÁGINA, ZOOM E RECARREGAMENTO -->
+        <!-- CONTROLES DE PÁGINA E ZOOM -->
         <div class="flex flex-wrap items-center gap-2">
-            <button onclick="carregarDadosNuvem(true)" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-2.5 py-1 rounded text-xs flex items-center gap-1 transition" title="Sincronizar dados agora">
-                🔄 <span>Atualizar Dados</span>
-            </button>
-
-            <!-- Controles de Pág e Zoom -->
             <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
                 <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
                 <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
@@ -85,7 +82,7 @@
             </h2>
 
             <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
-                Clique no PDF para adicionar um marcador ou escolha um abaixo para editar.
+                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
@@ -188,20 +185,23 @@
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
-            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Sincronizado na Nuvem</span>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo e distribuído em tempo real</span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
-                  oninput="agendarSalvarDefinicoes()"
+                  oninput="salvarDefinicoesGerais()"
                   class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
     <script>
         const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
-        
-        // REPOSITÓRIO PÚBLICO EM NUVEM PARA SINCRONIZAÇÃO COMPARTILHADA
-        const CLOUD_BIN_URL = "https://api.jsonbin.io/v3/b/663806fde41b4d34e4eedd2a";
-        const CLOUD_API_KEY = "$2a$10$w09uMAnw0tY0a0kE46STh.J62d3oIalX13A0gI2iK79QpWf4p5fSi";
+
+        // INICIALIZAÇÃO DO GUNDB PARA SINCRONIZAÇÃO P2P SEM CONTA
+        const gun = Gun([
+            'https://gun-manhattan.herokuapp.com/gun',
+            'https://gun-matrix.herokuapp.com/gun'
+        ]);
+        const appState = gun.get('pid_inspector_vapor_tg1_v1');
 
         let pdfDoc = null;
         let pageNum = 1;
@@ -214,7 +214,6 @@
         let startY = 0;
 
         let markers = [];
-        let generalDefs = "";
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -244,75 +243,31 @@
         async function init() {
             try {
                 await carregarPdf(pdfUrl);
-                await carregarDadosNuvem();
-                // Sincronização periódica a cada 10 segundos
-                setInterval(() => carregarDadosNuvem(false), 10000);
-            } catch (err) {
-                console.error("Erro ao inicializar:", err);
-            }
-        }
 
-        function atualizarStatusNuvem(status, mensagem) {
-            const badge = document.getElementById('syncBadge');
-            if (status === 'syncing') {
-                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-900/60 text-blue-300 border border-blue-700/50 flex items-center gap-1";
-                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span><span>${mensagem || 'Salvando...'}</span>`;
-            } else if (status === 'success') {
-                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1";
-                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>${mensagem || 'Sincronizado'}</span>`;
-            } else if (status === 'error') {
-                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-rose-900/60 text-rose-300 border border-rose-700/50 flex items-center gap-1";
-                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>${mensagem || 'Erro de conexão'}</span>`;
-            }
-        }
-
-        async function carregarDadosNuvem(notificar = false) {
-            if (notificar) atualizarStatusNuvem('syncing', 'Buscando dados...');
-            try {
-                const response = await fetch(CLOUD_BIN_URL, {
-                    headers: { 'X-Access-Key': CLOUD_API_KEY }
+                // Escutar atualizações de marcadores em tempo real de outros usuários
+                appState.get('markers').on((data) => {
+                    if (data) {
+                        try {
+                            markers = JSON.parse(data);
+                            renderMarkers();
+                        } catch (e) {}
+                    }
                 });
-                if (response.ok) {
-                    const json = await response.json();
-                    const record = json.record || {};
-                    markers = record.markers || [];
-                    generalDefs = record.generalDefs || "";
-                    document.getElementById('generalDefinitions').value = generalDefs;
-                    renderMarkers();
-                    atualizarStatusNuvem('success', 'Ao vivo');
-                } else {
-                    throw new Error('Falha HTTP');
-                }
+
+                // Escutar definições gerais em tempo real
+                appState.get('generalDefs').on((data) => {
+                    if (typeof data === 'string') {
+                        document.getElementById('generalDefinitions').value = data;
+                    }
+                });
+
             } catch (err) {
-                console.error("Erro ao ler dados da nuvem:", err);
-                atualizarStatusNuvem('error', 'Off-line');
+                console.error("Erro na inicialização:", err);
             }
         }
 
-        async function salvarDadosNuvem() {
-            atualizarStatusNuvem('syncing', 'Salvando...');
-            try {
-                const response = await fetch(CLOUD_BIN_URL, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Access-Key': CLOUD_API_KEY
-                    },
-                    body: JSON.stringify({
-                        markers: markers,
-                        generalDefs: generalDefs,
-                        updatedAt: new Date().toISOString()
-                    })
-                });
-                if (response.ok) {
-                    atualizarStatusNuvem('success', 'Salvo na nuvem');
-                } else {
-                    throw new Error('Falha no salvamento');
-                }
-            } catch (err) {
-                console.error("Erro ao salvar dados na nuvem:", err);
-                atualizarStatusNuvem('error', 'Erro ao salvar');
-            }
+        function sincronizarComRede() {
+            appState.get('markers').put(JSON.stringify(markers));
         }
 
         async function carregarPdf(url) {
@@ -451,7 +406,7 @@
             return alarmsList;
         }
 
-        async function salvarMarcador() {
+        function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim().toUpperCase();
             if (!tag) return alert('Informe a TAG / KKS do instrumento.');
 
@@ -487,7 +442,7 @@
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
-            await salvarDadosNuvem();
+            sincronizarComRede();
         }
 
         function renderMarkers() {
@@ -632,7 +587,7 @@
             renderMarkers();
         }
 
-        async function excluirMarcador() {
+        function excluirMarcador() {
             const id = document.getElementById('markerId').value;
             if (!id) return alert('Selecione um marcador para excluir.');
 
@@ -648,7 +603,7 @@
 
             limparFormulario();
             renderMarkers();
-            await salvarDadosNuvem();
+            sincronizarComRede();
         }
 
         function limparFormulario() {
@@ -679,17 +634,17 @@
             dlAnchor.remove();
         }
 
-        async function importarJson(event) {
+        function importarJson(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
                         markers = imported;
                         renderMarkers();
-                        await salvarDadosNuvem();
+                        sincronizarComRede();
                         alert('Backup importado com sucesso!');
                     } else {
                         alert('Arquivo JSON inválido.');
@@ -752,15 +707,15 @@
         }
 
         let defsTimer = null;
-        function agendarSalvarDefinicoes() {
-            generalDefs = document.getElementById('generalDefinitions').value;
+        function salvarDefinicoesGerais() {
+            const text = document.getElementById('generalDefinitions').value;
             const alertElem = document.getElementById('defsSavedAlert');
             alertElem.style.opacity = '1';
             clearTimeout(defsTimer);
-            defsTimer = setTimeout(async () => {
-                await salvarDadosNuvem();
+            defsTimer = setTimeout(() => {
+                appState.get('generalDefs').put(text);
                 alertElem.style.opacity = '0';
-            }, 1500);
+            }, 1000);
         }
 
         init();
