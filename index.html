@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Colaborativo ao Vivo</title>
+    <title>P&ID Inspector Pro - Supabase Realtime</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -11,6 +11,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .marker-dot { transform: translate(-50%, -50%); }
         .marker-tooltip { display: none; }
@@ -29,12 +31,12 @@
         <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-2">
                 <span class="text-xl">⚙️</span>
-                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
+                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">SUPABASE</span></h1>
                 
-                <!-- INDICADOR DE STATUS DA NUVEM -->
-                <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="syncBadgeText">Sincronizado ao vivo</span>
+                <!-- INDICADOR DE STATUS SUPABASE -->
+                <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-yellow-900/60 text-yellow-300 border border-yellow-700/50 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                    <span id="syncBadgeText">Conectando ao Supabase...</span>
                 </span>
             </div>
 
@@ -47,10 +49,6 @@
 
         <!-- CONTROLES DE PÁGINA E ZOOM -->
         <div class="flex flex-wrap items-center gap-2">
-            <button onclick="forcarSincronizacaoManual()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-2.5 py-1 rounded text-xs flex items-center gap-1 transition" title="Forçar atualização entre dispositivos">
-                🔄 <span>Atualizar</span>
-            </button>
-
             <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
                 <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
                 <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
@@ -151,7 +149,7 @@
                 </div>
 
                 <div class="flex gap-2 pt-1">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow">Salvar Marcador</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow">Salvar no Supabase</button>
                     <button type="button" onclick="excluirMarcador()" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 px-3 py-1.5 rounded transition" title="Excluir selecionado">Excluir</button>
                     <button type="button" onclick="limparFormulario()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded transition" title="Limpar formulário">Limpar</button>
                 </div>
@@ -187,7 +185,7 @@
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
-            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Sincronizado</span>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Sincronizado no Supabase</span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
@@ -197,10 +195,12 @@
 
     <script>
         const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
-        
-        // CHAVE DA SALA DE COMPARTILHAMENTO
-        const SYNC_ROOM_KEY = "pid_vapor_tg1_shared_v1";
-        const SYNC_SERVER_URL = "https://ntfy.sh/pid_inspector_vapor_tg1_channel/raw";
+
+        // CREDENCIAIS DO SUPABASE CONFIGURADAS
+        const SUPABASE_URL = "https://dxjeguzxsitbrpzfzgju.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4amVndXp4c2l0YnJwemZ6Z2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMzc3NDIsImV4cCI6MjEwODgxMzc0Mn0.qbTSrXUoqEhO1wfi2CC4TuVmNQ-f53pPisqbhj0g4NI";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let pdfDoc = null;
         let pageNum = 1;
@@ -212,8 +212,8 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem(SYNC_ROOM_KEY + '_markers') || '[]');
-        let generalDefs = localStorage.getItem(SYNC_ROOM_KEY + '_defs') || '';
+        let markers = [];
+        let generalDefs = "";
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -242,109 +242,151 @@
 
         async function init() {
             try {
-                document.getElementById('generalDefinitions').value = generalDefs;
                 await carregarPdf(pdfUrl);
-
-                // Iniciar escuta de eventos via Server-Sent Events (SSE) sem necessidade de conta
-                iniciarEscutaRede();
-
-                // Polling de backup a cada 8 segundos
-                setInterval(buscarAtualizacoesServidor, 8000);
+                await carregarDadosSupabase();
+                iniciarInscricaoTempoReal();
             } catch (err) {
-                console.error("Erro na inicialização:", err);
+                console.error("Erro na inicialização com Supabase:", err);
             }
         }
 
-        function iniciarEscutaRede() {
-            try {
-                const eventSource = new EventSource("https://ntfy.sh/pid_inspector_vapor_tg1_channel/sse");
-                eventSource.onmessage = (e) => {
-                    try {
-                        const data = JSON.parse(e.data);
-                        if (data.message) {
-                            const parsed = JSON.parse(data.message);
-                            processarDadosRecebidos(parsed);
-                        }
-                    } catch (err) {}
-                };
-            } catch (err) {
-                console.warn("EventSource não suportado, usando polling.");
+        function atualizarStatusSupabase(status, msg) {
+            const badge = document.getElementById('syncBadge');
+            const badgeText = document.getElementById('syncBadgeText');
+            if (status === 'connected') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1";
+                badgeText.textContent = msg || "Supabase Realtime Ativo";
+            } else if (status === 'syncing') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-900/60 text-blue-300 border border-blue-700/50 flex items-center gap-1";
+                badgeText.textContent = msg || "Sincronizando...";
+            } else {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-rose-900/60 text-rose-300 border border-rose-700/50 flex items-center gap-1";
+                badgeText.textContent = msg || "Erro na Conexão";
             }
         }
 
-        async function buscarAtualizacoesServidor() {
-            try {
-                const res = await fetch("https://ntfy.sh/pid_inspector_vapor_tg1_channel/json?poll=1");
-                if (res.ok) {
-                    const text = await res.text();
-                    const lines = text.trim().split("\n");
-                    lines.forEach(line => {
-                        try {
-                            const obj = JSON.parse(line);
-                            if (obj.message) {
-                                const parsed = JSON.parse(obj.message);
-                                processarDadosRecebidos(parsed);
-                            }
-                        } catch (e) {}
-                    });
-                }
-            } catch (e) {}
-        }
-
-        function processarDadosRecebidos(data) {
-            if (!data || !data.timestamp) return;
-
-            const myLastUpdate = parseInt(localStorage.getItem(SYNC_ROOM_KEY + '_my_time') || '0');
-            if (data.timestamp <= myLastUpdate) return; // Ignorar alterações antigas próprias
-
-            if (data.markers) {
-                markers = data.markers;
-                localStorage.setItem(SYNC_ROOM_KEY + '_markers', JSON.stringify(markers));
+        async function carregarDadosSupabase() {
+            atualizarStatusSupabase('syncing', 'Carregando banco...');
+            
+            const { data: dbMarkers, error: errMarkers } = await supabaseClient.from('pid_markers').select('*');
+            if (!errMarkers && dbMarkers) {
+                markers = dbMarkers.map(m => ({
+                    id: m.id,
+                    page: m.page,
+                    x: m.x,
+                    y: m.y,
+                    tag: m.tag,
+                    type: m.type,
+                    desc: m.description,
+                    range: m.range,
+                    comments: m.comments,
+                    correlatedTag: m.correlated_tag,
+                    alarmTable: m.alarm_table || []
+                }));
                 renderMarkers();
             }
 
-            if (data.generalDefs !== undefined) {
-                generalDefs = data.generalDefs;
-                localStorage.setItem(SYNC_ROOM_KEY + '_defs', generalDefs);
+            const { data: dbDefs } = await supabaseClient.from('pid_definitions').select('*').eq('id', 'general').single();
+            if (dbDefs) {
+                generalDefs = dbDefs.content || "";
                 document.getElementById('generalDefinitions').value = generalDefs;
             }
 
-            mostrarStatusSync("Atualizado de outro dispositivo");
+            atualizarStatusSupabase('connected', 'Supabase Realtime Ativo');
         }
 
-        async function transmitirMudancas() {
-            const now = Date.now();
-            localStorage.setItem(SYNC_ROOM_KEY + '_my_time', now.toString());
-            localStorage.setItem(SYNC_ROOM_KEY + '_markers', JSON.stringify(markers));
-            localStorage.setItem(SYNC_ROOM_KEY + '_defs', generalDefs);
+        function iniciarInscricaoTempoReal() {
+            supabaseClient
+                .channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'pid_markers' }, async () => {
+                    await carregarDadosSupabase();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'pid_definitions' }, async () => {
+                    const { data: dbDefs } = await supabaseClient.from('pid_definitions').select('*').eq('id', 'general').single();
+                    if (dbDefs) {
+                        generalDefs = dbDefs.content || "";
+                        document.getElementById('generalDefinitions').value = generalDefs;
+                    }
+                })
+                .subscribe();
+        }
+
+        async function salvarMarcador() {
+            const tag = document.getElementById('inputTag').value.trim().toUpperCase();
+            if (!tag) return alert('Informe a TAG / KKS do instrumento.');
+
+            const id = document.getElementById('markerId').value || Date.now().toString();
+            const type = document.getElementById('inputType').value;
+            const desc = document.getElementById('inputDesc').value.trim();
+            const range = document.getElementById('inputRange').value.trim();
+            const comments = document.getElementById('inputComments').value.trim();
+            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
+            const alarmTable = obterAlarmesFormulario();
+
+            let markerCoords = pendingCoords;
+            const existing = markers.find(m => m.id === id);
+            if (existing) {
+                markerCoords = { x: existing.x, y: existing.y };
+            }
+
+            if (!markerCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
+
+            atualizarStatusSupabase('syncing', 'Salvando marcador...');
 
             const payload = {
-                timestamp: now,
-                markers: markers,
-                generalDefs: generalDefs
+                id: id,
+                page: pageNum,
+                x: markerCoords.x,
+                y: markerCoords.y,
+                tag: tag,
+                type: type,
+                description: desc,
+                range: range,
+                comments: comments,
+                correlated_tag: correlatedTag,
+                alarm_table: alarmTable,
+                updated_at: new Date().toISOString()
             };
 
-            mostrarStatusSync("Enviando...");
+            const { error } = await supabaseClient.from('pid_markers').upsert(payload);
 
-            try {
-                await fetch(SYNC_SERVER_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-                mostrarStatusSync("Sincronizado ao vivo");
-            } catch (err) {
-                mostrarStatusSync("Salvo localmente");
+            if (error) {
+                alert('Erro ao salvar no Supabase: ' + error.message);
+                atualizarStatusSupabase('error', 'Erro ao salvar');
+            } else {
+                selectedMarkerId = id;
+                pendingCoords = null;
+                await carregarDadosSupabase();
             }
         }
 
-        function forcarSincronizacaoManual() {
-            buscarAtualizacoesServidor();
-            mostrarStatusSync("Sincronizado");
+        async function excluirMarcador() {
+            const id = document.getElementById('markerId').value;
+            if (!id) return alert('Selecione um marcador para excluir.');
+
+            if (!confirm('Deseja realmente excluir este marcador?')) return;
+
+            atualizarStatusSupabase('syncing', 'Excluindo marcador...');
+            const { error } = await supabaseClient.from('pid_markers').delete().eq('id', id);
+
+            if (error) {
+                alert('Erro ao excluir no Supabase: ' + error.message);
+            } else {
+                limparFormulario();
+                await carregarDadosSupabase();
+            }
         }
 
-        function mostrarStatusSync(msg) {
-            const textElem = document.getElementById('syncBadgeText');
-            if (textElem) textElem.textContent = msg;
+        let defsTimer = null;
+        function salvarDefinicoesGerais() {
+            const text = document.getElementById('generalDefinitions').value;
+            const alertElem = document.getElementById('defsSavedAlert');
+            alertElem.style.opacity = '1';
+            clearTimeout(defsTimer);
+            defsTimer = setTimeout(async () => {
+                await supabaseClient.from('pid_definitions').upsert({ id: 'general', content: text, updated_at: new Date().toISOString() });
+                alertElem.style.opacity = '0';
+            }, 1000);
         }
 
         async function carregarPdf(url) {
@@ -388,9 +430,7 @@
             wrapper.style.transform = `translate(${panX}px, ${panY}px)`;
         }
 
-        function resetarZoomFit() {
-            renderPage(pageNum, true);
-        }
+        function resetarZoomFit() { renderPage(pageNum, true); }
 
         function mudarPagina(delta) {
             if (!pdfDoc) return;
@@ -481,45 +521,6 @@
                 }
             });
             return alarmsList;
-        }
-
-        function salvarMarcador() {
-            const tag = document.getElementById('inputTag').value.trim().toUpperCase();
-            if (!tag) return alert('Informe a TAG / KKS do instrumento.');
-
-            const id = document.getElementById('markerId').value || Date.now().toString();
-            const type = document.getElementById('inputType').value;
-            const desc = document.getElementById('inputDesc').value.trim();
-            const range = document.getElementById('inputRange').value.trim();
-            const comments = document.getElementById('inputComments').value.trim();
-            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
-            const alarmTable = obterAlarmesFormulario();
-
-            const existingIndex = markers.findIndex(m => m.id === id);
-
-            if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, type, desc, range, comments, correlatedTag, alarmTable };
-            } else {
-                if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
-                markers.push({
-                    id,
-                    page: pageNum,
-                    x: pendingCoords.x,
-                    y: pendingCoords.y,
-                    tag,
-                    type,
-                    desc,
-                    range,
-                    comments,
-                    correlatedTag,
-                    alarmTable
-                });
-            }
-
-            selectedMarkerId = id;
-            pendingCoords = null;
-            renderMarkers();
-            transmitirMudancas();
         }
 
         function renderMarkers() {
@@ -664,25 +665,6 @@
             renderMarkers();
         }
 
-        function excluirMarcador() {
-            const id = document.getElementById('markerId').value;
-            if (!id) return alert('Selecione um marcador para excluir.');
-
-            if (!confirm('Deseja realmente excluir este marcador?')) return;
-
-            markers = markers.filter(m => m.id !== id);
-            const tagExcluida = document.getElementById('inputTag').value.trim();
-            markers.forEach(m => {
-                if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
-                    m.correlatedTag = '';
-                }
-            });
-
-            limparFormulario();
-            renderMarkers();
-            transmitirMudancas();
-        }
-
         function limparFormulario() {
             selectedMarkerId = null;
             pendingCoords = null;
@@ -711,20 +693,31 @@
             dlAnchor.remove();
         }
 
-        function importarJson(event) {
+        async function importarJson(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
-                        markers = imported;
-                        renderMarkers();
-                        transmitirMudancas();
-                        alert('Backup importado com sucesso!');
-                    } else {
-                        alert('Arquivo JSON inválido.');
+                        for (const item of imported) {
+                            await supabaseClient.from('pid_markers').upsert({
+                                id: item.id || Date.now().toString(),
+                                page: item.page || 1,
+                                x: item.x,
+                                y: item.y,
+                                tag: item.tag,
+                                type: item.type,
+                                description: item.desc,
+                                range: item.range,
+                                comments: item.comments,
+                                correlated_tag: item.correlatedTag,
+                                alarm_table: item.alarmTable || []
+                            });
+                        }
+                        await carregarDadosSupabase();
+                        alert('Backup importado no Supabase com sucesso!');
                     }
                 } catch (err) {
                     alert('Erro ao processar o arquivo JSON.');
@@ -781,18 +774,6 @@
                 btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
                 btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
             }
-        }
-
-        let defsTimer = null;
-        function salvarDefinicoesGerais() {
-            generalDefs = document.getElementById('generalDefinitions').value;
-            const alertElem = document.getElementById('defsSavedAlert');
-            alertElem.style.opacity = '1';
-            clearTimeout(defsTimer);
-            defsTimer = setTimeout(() => {
-                transmitirMudancas();
-                alertElem.style.opacity = '0';
-            }, 1000);
         }
 
         init();
