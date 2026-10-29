@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Gestão de Instrumentação</title>
+    <title>P&ID Inspector Pro - Colaborativo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -12,44 +12,32 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
     <style>
-        .marker-dot {
-            transform: translate(-50%, -50%);
-        }
-        .marker-tooltip {
-            display: none;
-        }
-        .marker-wrapper:hover .marker-tooltip {
-            display: block;
-        }
-        .no-select {
-            user-select: none;
-        }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #030712;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #1f2937;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #374151;
-        }
+        .marker-dot { transform: translate(-50%, -50%); }
+        .marker-tooltip { display: none; }
+        .marker-wrapper:hover .marker-tooltip { display: block; }
+        .no-select { user-select: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #030712; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
-    <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
+    <!-- CABEÇALHO DA APLICAÇÃO -->
     <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-30 shadow-md">
         <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-2">
                 <span class="text-xl">⚙️</span>
                 <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
+                
+                <!-- INDICADOR DE STATUS DA NUVEM -->
+                <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-yellow-900/60 text-yellow-300 border border-yellow-700/50 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                    <span>Conectando...</span>
+                </span>
             </div>
+
             <!-- ABAS SUPERIORES -->
             <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
                 <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow">Visualizador P&ID</button>
@@ -57,16 +45,11 @@
             </div>
         </div>
 
-        <!-- CONTROLES DE PÁGINA, ZOOM E ARQUIVO -->
+        <!-- CONTROLES DE PÁGINA, ZOOM E RECARREGAMENTO -->
         <div class="flex flex-wrap items-center gap-2">
-            <!-- Seletor de Arquivo PDF / Supabase -->
-            <div class="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700 text-xs">
-                <label for="pdfFileInput" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1">
-                    📂 <span>Abrir PDF</span>
-                </label>
-                <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="carregarPdfLocal(event)">
-                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px]" title="Recarregar do Supabase Storage">Supabase</button>
-            </div>
+            <button onclick="carregarDadosNuvem(true)" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-2.5 py-1 rounded text-xs flex items-center gap-1 transition" title="Sincronizar dados agora">
+                🔄 <span>Atualizar Dados</span>
+            </button>
 
             <!-- Controles de Pág e Zoom -->
             <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
@@ -89,9 +72,7 @@
         <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
             <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
                 <canvas id="pdfCanvas" class="block"></canvas>
-                <!-- SVG para as linhas de correlação entre instrumentos -->
                 <svg id="correlationsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
-                <!-- Camada de marcadores -->
                 <div id="markersLayer" class="absolute inset-0 pointer-events-none z-20"></div>
             </div>
         </main>
@@ -104,7 +85,7 @@
             </h2>
 
             <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
-                Clique no PDF para posicionar um marcador ou escolha um da lista abaixo para editar.
+                Clique no PDF para adicionar um marcador ou escolha um abaixo para editar.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
@@ -149,7 +130,7 @@
                     </div>
                 </div>
 
-                <!-- TABELA DE ALARMES E TRIPS -->
+                <!-- TABELA DE ALARMES -->
                 <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800 space-y-2">
                     <div class="flex justify-between items-center border-b border-gray-800 pb-1.5">
                         <label class="font-bold text-blue-400 text-[11px] flex items-center gap-1">
@@ -161,9 +142,7 @@
                         </button>
                     </div>
 
-                    <div id="alarmsContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                        <!-- Linhas de alarme injetadas dinamicamente aqui -->
-                    </div>
+                    <div id="alarmsContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
                 </div>
 
                 <div>
@@ -181,7 +160,7 @@
 
             <hr class="border-gray-800 my-3">
 
-            <!-- BARRA DE BUSCA E LISTA DE MARCADORES -->
+            <!-- BUSCA E LISTA DE MARCADORES -->
             <div class="flex flex-col gap-2 mb-2">
                 <div class="flex items-center justify-between">
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -194,7 +173,7 @@
 
             <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-48 pr-1"></div>
 
-            <!-- FERRAMENTAS DE EXPORTAÇÃO E IMPORTAÇÃO -->
+            <!-- EXPORTAÇÃO E IMPORTAÇÃO -->
             <div class="border-t border-gray-800 pt-3 mt-3 grid grid-cols-3 gap-1.5">
                 <button onclick="exportarJson()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Baixar Backup JSON">📥 Exportar</button>
                 <label class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center cursor-pointer" title="Restaurar Backup JSON">
@@ -209,19 +188,21 @@
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
-            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo automaticamente</span>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Sincronizado na Nuvem</span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
-                  oninput="salvarDefinicoesGerais()"
+                  oninput="agendarSalvarDefinicoes()"
                   class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
     <script>
-        // NOVO LINK PADRÃO SUPABASE
-        const supabaseDefaultUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
-        let currentPdfSource = supabaseDefaultUrl;
+        const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
         
+        // REPOSITÓRIO PÚBLICO EM NUVEM PARA SINCRONIZAÇÃO COMPARTILHADA
+        const CLOUD_BIN_URL = "https://api.jsonbin.io/v3/b/663806fde41b4d34e4eedd2a";
+        const CLOUD_API_KEY = "$2a$10$w09uMAnw0tY0a0kE46STh.J62d3oIalX13A0gI2iK79QpWf4p5fSi";
+
         let pdfDoc = null;
         let pageNum = 1;
         let scale = 1.0;
@@ -232,7 +213,8 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem('pid_inspector_markers_v5') || '[]');
+        let markers = [];
+        let generalDefs = "";
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -261,36 +243,83 @@
 
         async function init() {
             try {
-                await carregarPdf(currentPdfSource);
-                carregarDefinicoesGerais();
+                await carregarPdf(pdfUrl);
+                await carregarDadosNuvem();
+                // Sincronização periódica a cada 10 segundos
+                setInterval(() => carregarDadosNuvem(false), 10000);
             } catch (err) {
-                console.error("Erro ao carregar o PDF inicial:", err);
-                alert("Erro ao carregar o PDF padrão do Supabase Storage. Você pode usar o botão 'Abrir PDF' para selecionar um arquivo local.");
+                console.error("Erro ao inicializar:", err);
             }
         }
 
-        async function carregarPdf(urlOrSource) {
-            const loadingTask = pdfjsLib.getDocument(urlOrSource);
+        function atualizarStatusNuvem(status, mensagem) {
+            const badge = document.getElementById('syncBadge');
+            if (status === 'syncing') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-900/60 text-blue-300 border border-blue-700/50 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span><span>${mensagem || 'Salvando...'}</span>`;
+            } else if (status === 'success') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>${mensagem || 'Sincronizado'}</span>`;
+            } else if (status === 'error') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-rose-900/60 text-rose-300 border border-rose-700/50 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>${mensagem || 'Erro de conexão'}</span>`;
+            }
+        }
+
+        async function carregarDadosNuvem(notificar = false) {
+            if (notificar) atualizarStatusNuvem('syncing', 'Buscando dados...');
+            try {
+                const response = await fetch(CLOUD_BIN_URL, {
+                    headers: { 'X-Access-Key': CLOUD_API_KEY }
+                });
+                if (response.ok) {
+                    const json = await response.json();
+                    const record = json.record || {};
+                    markers = record.markers || [];
+                    generalDefs = record.generalDefs || "";
+                    document.getElementById('generalDefinitions').value = generalDefs;
+                    renderMarkers();
+                    atualizarStatusNuvem('success', 'Ao vivo');
+                } else {
+                    throw new Error('Falha HTTP');
+                }
+            } catch (err) {
+                console.error("Erro ao ler dados da nuvem:", err);
+                atualizarStatusNuvem('error', 'Off-line');
+            }
+        }
+
+        async function salvarDadosNuvem() {
+            atualizarStatusNuvem('syncing', 'Salvando...');
+            try {
+                const response = await fetch(CLOUD_BIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Access-Key': CLOUD_API_KEY
+                    },
+                    body: JSON.stringify({
+                        markers: markers,
+                        generalDefs: generalDefs,
+                        updatedAt: new Date().toISOString()
+                    })
+                });
+                if (response.ok) {
+                    atualizarStatusNuvem('success', 'Salvo na nuvem');
+                } else {
+                    throw new Error('Falha no salvamento');
+                }
+            } catch (err) {
+                console.error("Erro ao salvar dados na nuvem:", err);
+                atualizarStatusNuvem('error', 'Erro ao salvar');
+            }
+        }
+
+        async function carregarPdf(url) {
+            const loadingTask = pdfjsLib.getDocument(url);
             pdfDoc = await loadingTask.promise;
             pageNum = 1;
             await renderPage(pageNum, true);
-        }
-
-        async function carregarPdfSupabase() {
-            currentPdfSource = supabaseDefaultUrl;
-            await carregarPdf(currentPdfSource);
-        }
-
-        function carregarPdfLocal(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const fileReader = new FileReader();
-            fileReader.onload = async function() {
-                const typedarray = new Uint8Array(this.result);
-                currentPdfSource = typedarray;
-                await carregarPdf(currentPdfSource);
-            };
-            fileReader.readAsArrayBuffer(file);
         }
 
         async function renderPage(num, isInitial = false) {
@@ -346,7 +375,6 @@
             renderPage(pageNum);
         }
 
-        // Atalhos de Zoom e Navegação
         window.addEventListener('wheel', function(e) {
             if (e.ctrlKey) {
                 e.preventDefault();
@@ -354,7 +382,6 @@
             }
         }, { passive: false });
 
-        // Pan por arrasto (Mouse)
         container.addEventListener('mousedown', function(e) {
             if (e.target.closest('.marker-wrapper')) return;
             isDragging = true;
@@ -371,7 +398,6 @@
 
         window.addEventListener('mouseup', function() { isDragging = false; });
 
-        // Clique para criar marcador no PDF
         canvas.addEventListener('click', function(e) {
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) / canvas.width;
@@ -384,7 +410,6 @@
             renderMarkers();
         });
 
-        // MANIPULAÇÃO DA TABELA DE ALARMES
         function adicionarLinhaAlarme(data = { level: 'H', setpoint: '', action: '' }) {
             const container = document.getElementById('alarmsContainer');
             const rowId = 'alarm_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
@@ -426,7 +451,7 @@
             return alarmsList;
         }
 
-        function salvarMarcador() {
+        async function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim().toUpperCase();
             if (!tag) return alert('Informe a TAG / KKS do instrumento.');
 
@@ -459,10 +484,10 @@
                 });
             }
 
-            localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
+            await salvarDadosNuvem();
         }
 
         function renderMarkers() {
@@ -479,7 +504,6 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Linhas de correlação
             pageMarkers.forEach(m => {
                 if (m.correlatedTag) {
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
@@ -497,7 +521,6 @@
                 }
             });
 
-            // Ponto temporário
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
                 tempDot.className = 'absolute marker-dot w-6 h-6 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
@@ -530,7 +553,6 @@
                 }`;
                 dot.innerHTML = '📍';
 
-                // Montar tabela de alarmes no tooltip
                 let alarmsHtml = '';
                 if (m.alarmTable && m.alarmTable.length > 0) {
                     alarmsHtml = `<div class="mt-2 border-t border-gray-800 pt-1.5 space-y-1">`;
@@ -562,7 +584,6 @@
                 wrapperElem.onclick = (e) => { e.stopPropagation(); carregarMarcadorForm(m.id); };
                 layer.appendChild(wrapperElem);
 
-                // Item na lista lateral
                 const listItem = document.createElement('div');
                 listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
                     isSelected ? 'bg-gray-800 border-blue-500 shadow' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
@@ -603,7 +624,6 @@
             document.getElementById('inputComments').value = m.comments || '';
             document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
 
-            // Carregar tabela de alarmes
             document.getElementById('alarmsContainer').innerHTML = '';
             if (m.alarmTable && m.alarmTable.length > 0) {
                 m.alarmTable.forEach(a => adicionarLinhaAlarme(a));
@@ -612,7 +632,7 @@
             renderMarkers();
         }
 
-        function excluirMarcador() {
+        async function excluirMarcador() {
             const id = document.getElementById('markerId').value;
             if (!id) return alert('Selecione um marcador para excluir.');
 
@@ -626,9 +646,9 @@
                 }
             });
 
-            localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
             limparFormulario();
             renderMarkers();
+            await salvarDadosNuvem();
         }
 
         function limparFormulario() {
@@ -649,7 +669,6 @@
             document.getElementById('alarmsContainer').innerHTML = '';
         }
 
-        // Exportar e Importar JSON
         function exportarJson() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(markers, null, 2));
             const dlAnchor = document.createElement('a');
@@ -660,17 +679,17 @@
             dlAnchor.remove();
         }
 
-        function importarJson(event) {
+        async function importarJson(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
                         markers = imported;
-                        localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
                         renderMarkers();
+                        await salvarDadosNuvem();
                         alert('Backup importado com sucesso!');
                     } else {
                         alert('Arquivo JSON inválido.');
@@ -682,7 +701,6 @@
             reader.readAsText(file);
         }
 
-        // Exportar Relatório CSV detalhado por alarme
         function exportarCsv() {
             if (markers.length === 0) return alert('Não há marcadores para exportar.');
             let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertrava;TAG_Correlacionada;Comentarios\n';
@@ -705,7 +723,6 @@
             dlAnchor.remove();
         }
 
-        // ABAS PRINCIPAIS
         function alternarTelaPrincipal(tela) {
             const screenPid = document.getElementById('screenPid');
             const screenDefs = document.getElementById('screenDefs');
@@ -734,21 +751,16 @@
             }
         }
 
-        // GERENCIAR DEFINIÇÕES GERAIS
         let defsTimer = null;
-        function salvarDefinicoesGerais() {
-            const text = document.getElementById('generalDefinitions').value;
-            localStorage.setItem('pid_inspector_general_defs', text);
-
+        function agendarSalvarDefinicoes() {
+            generalDefs = document.getElementById('generalDefinitions').value;
             const alertElem = document.getElementById('defsSavedAlert');
             alertElem.style.opacity = '1';
             clearTimeout(defsTimer);
-            defsTimer = setTimeout(() => { alertElem.style.opacity = '0'; }, 2000);
-        }
-
-        function carregarDefinicoesGerais() {
-            const saved = localStorage.getItem('pid_inspector_general_defs') || '';
-            document.getElementById('generalDefinitions').value = saved;
+            defsTimer = setTimeout(async () => {
+                await salvarDadosNuvem();
+                alertElem.style.opacity = '0';
+            }, 1500);
         }
 
         init();
