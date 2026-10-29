@@ -29,14 +29,11 @@
 <body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
     <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
-    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-20">
-        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">⚙️</span>
-                <h1 class="text-base font-bold text-blue-400">P&ID Inspector</h1>
-            </div>
-            <!-- ABAS SUPERIORES -->
-            <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex justify-between items-center gap-3 z-20">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">⚙️</span>
+            <h1 class="text-base font-bold text-blue-400">P&ID Inspector</h1>
+            <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700 ml-4">
                 <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition">Visualizador P&ID</button>
                 <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
             </div>
@@ -55,31 +52,29 @@
         </div>
     </header>
 
-    <!-- TELA 1: VISUALIZADOR P&ID + PAINEL DE INSTRUMENTOS -->
-    <div id="screenPid" class="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+    <!-- TELA 1: VISUALIZADOR P&ID + PAINEL -->
+    <div id="screenPid" class="flex flex-1 overflow-hidden relative">
         
         <!-- CANVAS DO PDF -->
         <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
             <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
                 <canvas id="pdfCanvas" class="block"></canvas>
-                <!-- SVG para as linhas de correlação entre instrumentos -->
                 <svg id="correlationsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
-                <!-- Camada de marcadores -->
                 <div id="markersLayer" class="absolute inset-0 pointer-events-none z-20"></div>
             </div>
         </main>
 
-        <!-- PAINEL LATERAL DE INSTRUMENTOS -->
-        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[45vh] md:max-h-full z-30">
+        <!-- PAINEL LATERAL -->
+        <aside class="w-96 bg-gray-900 border-l border-gray-800 flex flex-col p-4 overflow-y-auto z-30">
             <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center gap-2">
-                <span>📍</span> Configuração do Instrumento
+                <span>📍</span> Painel do Instrumento
             </h2>
 
             <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3">
-                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
+                Clique no PDF para posicionar um marcador ou selecione um abaixo.
             </div>
 
-            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-2.5 text-xs">
+            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
                 <input type="hidden" id="markerId">
 
                 <div>
@@ -94,24 +89,38 @@
                            class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">Range:</label>
-                        <input type="text" id="inputRange" placeholder="0 - 150 bar" 
-                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Range:</label>
+                    <input type="text" id="inputRange" placeholder="Ex: 0 - 150 bar (g)" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <!-- TABELA DE ALARMES / LIMITES (ESTILO DA IMAGEM) -->
+                <div class="bg-gray-800/40 p-2 rounded border border-gray-700/60 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="font-bold text-gray-300 text-[11px] uppercase tracking-wider">Limites, Alarmes & Trips</label>
+                        <button type="button" onclick="adicionarLinhaLimite()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] font-semibold">+ Linha</button>
                     </div>
-                    <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">Alarmes / Trips:</label>
-                        <input type="text" id="inputAlarms" placeholder="H1: 106 bar" 
-                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+
+                    <!-- Cabeçalho da Tabela -->
+                    <div class="grid grid-cols-12 gap-1 text-[10px] font-bold text-gray-400 text-center px-1">
+                        <span class="col-span-2">Tipo</span>
+                        <span class="col-span-3">Valor</span>
+                        <span class="col-span-2">Alarme</span>
+                        <span class="col-span-2">Trip</span>
+                        <span class="col-span-2">Obs</span>
+                        <span class="col-span-1"></span>
+                    </div>
+
+                    <div id="limitsContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        <!-- Injetado via JS -->
                     </div>
                 </div>
 
                 <div>
                     <label class="block font-semibold text-gray-400 mb-0.5">Correlacionar com outra TAG:</label>
-                    <input type="text" id="inputCorrelatedTag" placeholder="Digite a TAG exata (ex: 10LBA10CT010)" 
+                    <input type="text" id="inputCorrelatedTag" placeholder="Digite a TAG exata para ligar a linha amarela" 
                            class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
-                    <span class="text-[10px] text-gray-500">A linha amarela aparecerá ligando as TAGs.</span>
                 </div>
 
                 <div>
@@ -131,18 +140,18 @@
             <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                 Marcadores na Pág. <span id="currentPageNumDisplay">1</span>
             </h3>
-            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-40"></div>
+            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-32"></div>
         </aside>
     </div>
 
     <!-- TELA 2: DEFINIÇÕES GERAIS -->
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <h2 class="text-lg font-bold text-blue-400 mb-2">Definições Gerais e Notas do Projeto</h2>
-        <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, escopo e notas técnicas que se aplicam ao fluxograma.</p>
+        <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, escopo e notas técnicas.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
                   oninput="salvarDefinicoesGerais()"
                   class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed"></textarea>
-        <div id="defsSavedAlert" class="text-xs text-green-400 text-right mt-2 opacity-0 transition-opacity">✔ Salvo automaticamente no navegador</div>
+        <div id="defsSavedAlert" class="text-xs text-green-400 text-right mt-2 opacity-0 transition-opacity">✔ Salvo automaticamente</div>
     </div>
 
     <script>
@@ -158,7 +167,7 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v3') || '[]');
+        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v5') || '[]');
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -232,7 +241,6 @@
             renderPage(pageNum);
         }
 
-        // Zoom com Ctrl + Scroll
         window.addEventListener('wheel', function(e) {
             if (e.ctrlKey) {
                 e.preventDefault();
@@ -240,7 +248,6 @@
             }
         }, { passive: false });
 
-        // Pan por arrasto
         container.addEventListener('mousedown', function(e) {
             if (e.target.closest('.marker-wrapper')) return;
             isDragging = true;
@@ -257,7 +264,6 @@
 
         window.addEventListener('mouseup', function() { isDragging = false; });
 
-        // Clique para criar marcador
         canvas.addEventListener('click', function(e) {
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) / canvas.width;
@@ -270,6 +276,52 @@
             renderMarkers();
         });
 
+        function adicionarLinhaLimite(dados = {}) {
+            const container = document.getElementById('limitsContainer');
+            const rowId = 'limit_' + Date.now() + Math.random().toString(36.substr(2, 4));
+
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-1 bg-gray-900 p-1 rounded border border-gray-700 items-center limit-row';
+            row.id = rowId;
+
+            row.innerHTML = `
+                <div class="col-span-2">
+                    <input type="text" placeholder="L1/H1" value="${dados.tipo || ''}" class="limit-tipo w-full bg-gray-800 border border-gray-700 rounded px-1 py-1 text-center text-white font-bold text-[11px]">
+                </div>
+                <div class="col-span-3">
+                    <input type="text" placeholder="Valor" value="${dados.valor || ''}" class="limit-valor w-full bg-gray-800 border border-gray-700 rounded px-1 py-1 text-white text-[11px]">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" placeholder="W/A" value="${dados.alarme || ''}" class="limit-alarme w-full bg-gray-800 border border-gray-700 rounded px-1 py-1 text-center text-amber-300 font-semibold text-[11px]">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" placeholder="Z/MAN" value="${dados.trip || ''}" class="limit-trip w-full bg-gray-800 border border-gray-700 rounded px-1 py-1 text-center text-red-400 font-semibold text-[11px]">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" placeholder="Obs" value="${dados.obs || ''}" class="limit-obs w-full bg-gray-800 border border-gray-700 rounded px-1 py-1 text-white text-[10px]">
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="document.getElementById('${rowId}').remove()" class="text-red-400 hover:text-red-300 font-bold text-xs" title="Remover">✕</button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        function coletarLimites() {
+            const rows = document.querySelectorAll('.limit-row');
+            const limits = [];
+            rows.forEach(r => {
+                limits.push({
+                    tipo: r.querySelector('.limit-tipo').value.trim(),
+                    valor: r.querySelector('.limit-valor').value.trim(),
+                    alarme: r.querySelector('.limit-alarme').value.trim(),
+                    trip: r.querySelector('.limit-trip').value.trim(),
+                    obs: r.querySelector('.limit-obs').value.trim()
+                });
+            });
+            return limits;
+        }
+
         function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim();
             if (!tag) return alert('Informe a TAG / KKS.');
@@ -277,14 +329,14 @@
             const id = document.getElementById('markerId').value || Date.now().toString();
             const desc = document.getElementById('inputDesc').value.trim();
             const range = document.getElementById('inputRange').value.trim();
-            const alarms = document.getElementById('inputAlarms').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
             const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim();
+            const limits = coletarLimites();
 
             const existingIndex = markers.findIndex(m => m.id === id);
 
             if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, alarms, comments, correlatedTag };
+                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, comments, correlatedTag, limits };
             } else {
                 if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
                 markers.push({
@@ -295,13 +347,13 @@
                     tag,
                     desc,
                     range,
-                    alarms,
                     comments,
-                    correlatedTag
+                    correlatedTag,
+                    limits
                 });
             }
 
-            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            localStorage.setItem('supabase_pdf_markers_v5', JSON.stringify(markers));
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
@@ -318,10 +370,8 @@
 
             const pageMarkers = markers.filter(m => m.page === pageNum);
 
-            // Desenhar linhas de correlação baseadas na TAG digitada
             pageMarkers.forEach(m => {
                 if (m.correlatedTag) {
-                    // Procurar outro marcador na mesma página com a TAG informada
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
                     if (target) {
                         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -329,7 +379,7 @@
                         line.setAttribute('y1', `${m.y * 100}%`);
                         line.setAttribute('x2', `${target.x * 100}%`);
                         line.setAttribute('y2', `${target.y * 100}%`);
-                        line.setAttribute('stroke', '#fde047'); // Amarelo claro (yellow-300)
+                        line.setAttribute('stroke', '#fde047');
                         line.setAttribute('stroke-width', '2');
                         line.setAttribute('stroke-dasharray', '4');
                         svgSvg.appendChild(line);
@@ -337,7 +387,6 @@
                 }
             });
 
-            // Ponto temporário
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
                 tempDot.className = 'absolute marker-dot w-5 h-5 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
@@ -360,12 +409,26 @@
                 }`;
                 dot.innerHTML = '📍';
 
+                let limitsHtml = '';
+                if (m.limits && m.limits.length > 0) {
+                    limitsHtml = `<div class="mt-1.5 border-t border-gray-700 pt-1 space-y-0.5">`;
+                    m.limits.forEach(l => {
+                        limitsHtml += `<div class="flex justify-between text-[10px] gap-2">
+                            <span class="font-bold text-blue-300">${l.tipo}: ${l.valor}</span>
+                            <span class="text-amber-300">${l.alarme}</span>
+                            <span class="text-red-400 font-semibold">${l.trip}</span>
+                        </div>`;
+                    });
+                    limitsHtml += `</div>`;
+                }
+
                 const tooltip = document.createElement('div');
-                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 border border-gray-700 text-gray-100 p-2 rounded shadow-xl z-40 pointer-events-none text-xs';
+                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-gray-900 border border-gray-700 text-gray-100 p-2.5 rounded shadow-xl z-40 pointer-events-none text-xs';
                 tooltip.innerHTML = `
                     <div class="font-bold text-blue-400">${m.tag}</div>
-                    <div class="text-gray-300 mt-0.5">${m.desc || 'Sem descrição'}</div>
-                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1">🔗 Ligado a: ${m.correlatedTag}</div>` : ''}
+                    <div class="text-gray-300 text-[11px] mt-0.5">${m.desc || 'Sem descrição'}</div>
+                    ${m.range ? `<div class="text-gray-400 text-[10px] mt-1">Range: ${m.range}</div>` : ''}
+                    ${limitsHtml}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -373,7 +436,6 @@
                 wrapperElem.onclick = (e) => { e.stopPropagation(); carregarMarcadorForm(m.id); };
                 layer.appendChild(wrapperElem);
 
-                // Lista lateral
                 const listItem = document.createElement('div');
                 listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
                     isSelected ? 'bg-gray-800 border-blue-500' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
@@ -395,9 +457,16 @@
             document.getElementById('inputTag').value = m.tag;
             document.getElementById('inputDesc').value = m.desc || '';
             document.getElementById('inputRange').value = m.range || '';
-            document.getElementById('inputAlarms').value = m.alarms || '';
             document.getElementById('inputComments').value = m.comments || '';
             document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
+
+            const container = document.getElementById('limitsContainer');
+            container.innerHTML = '';
+            if (m.limits && m.limits.length > 0) {
+                m.limits.forEach(l => adicionarLinhaLimite(l));
+            } else {
+                adicionarLinhaLimite({ tipo: 'H1', valor: '', alarme: 'W', trip: '', obs: '' });
+            }
 
             renderMarkers();
         }
@@ -407,7 +476,6 @@
             if (!id) return alert('Selecione um marcador.');
 
             markers = markers.filter(m => m.id !== id);
-            // Limpar referências de correlação que apontavam para este marcador
             const tagExcluida = document.getElementById('inputTag').value.trim();
             markers.forEach(m => {
                 if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
@@ -415,7 +483,7 @@
                 }
             });
 
-            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            localStorage.setItem('supabase_pdf_markers_v5', JSON.stringify(markers));
             limparFormulario();
             renderMarkers();
         }
@@ -431,12 +499,14 @@
             document.getElementById('inputTag').value = '';
             document.getElementById('inputDesc').value = '';
             document.getElementById('inputRange').value = '';
-            document.getElementById('inputAlarms').value = '';
             document.getElementById('inputComments').value = '';
             document.getElementById('inputCorrelatedTag').value = '';
+            
+            const container = document.getElementById('limitsContainer');
+            container.innerHTML = '';
+            adicionarLinhaLimite({ tipo: 'H1', valor: '', alarme: 'W', trip: '', obs: '' });
         }
 
-        // ABAS PRINCIPAIS
         function alternarTelaPrincipal(tela) {
             const screenPid = document.getElementById('screenPid');
             const screenDefs = document.getElementById('screenDefs');
@@ -465,7 +535,6 @@
             }
         }
 
-        // GERENCIAR DEFINIÇÕES GERAIS
         let defsTimer = null;
         function salvarDefinicoesGerais() {
             const text = document.getElementById('generalDefinitions').value;
@@ -482,6 +551,7 @@
             document.getElementById('generalDefinitions').value = saved;
         }
 
+        adicionarLinhaLimite({ tipo: 'H1', valor: '', alarme: 'W', trip: '', obs: '' });
         init();
     </script>
 </body>
