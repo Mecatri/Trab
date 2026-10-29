@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Colaborativo P2P</title>
+    <title>P&ID Inspector Pro - Colaborativo ao Vivo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -11,8 +11,6 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
-    <!-- GunDB para Sincronização P2P sem Conta/Login -->
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
         .marker-dot { transform: translate(-50%, -50%); }
         .marker-tooltip { display: none; }
@@ -36,7 +34,7 @@
                 <!-- INDICADOR DE STATUS DA NUVEM -->
                 <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Ao vivo (P2P)</span>
+                    <span id="syncBadgeText">Sincronizado ao vivo</span>
                 </span>
             </div>
 
@@ -49,6 +47,10 @@
 
         <!-- CONTROLES DE PÁGINA E ZOOM -->
         <div class="flex flex-wrap items-center gap-2">
+            <button onclick="forcarSincronizacaoManual()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-2.5 py-1 rounded text-xs flex items-center gap-1 transition" title="Forçar atualização entre dispositivos">
+                🔄 <span>Atualizar</span>
+            </button>
+
             <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
                 <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
                 <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
@@ -185,7 +187,7 @@
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
-            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo e distribuído em tempo real</span>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Sincronizado</span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
@@ -195,13 +197,10 @@
 
     <script>
         const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
-
-        // INICIALIZAÇÃO DO GUNDB PARA SINCRONIZAÇÃO P2P SEM CONTA
-        const gun = Gun([
-            'https://gun-manhattan.herokuapp.com/gun',
-            'https://gun-matrix.herokuapp.com/gun'
-        ]);
-        const appState = gun.get('pid_inspector_vapor_tg1_v1');
+        
+        // CHAVE DA SALA DE COMPARTILHAMENTO
+        const SYNC_ROOM_KEY = "pid_vapor_tg1_shared_v1";
+        const SYNC_SERVER_URL = "https://ntfy.sh/pid_inspector_vapor_tg1_channel/raw";
 
         let pdfDoc = null;
         let pageNum = 1;
@@ -213,7 +212,8 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = [];
+        let markers = JSON.parse(localStorage.getItem(SYNC_ROOM_KEY + '_markers') || '[]');
+        let generalDefs = localStorage.getItem(SYNC_ROOM_KEY + '_defs') || '';
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -242,32 +242,109 @@
 
         async function init() {
             try {
+                document.getElementById('generalDefinitions').value = generalDefs;
                 await carregarPdf(pdfUrl);
 
-                // Escutar atualizações de marcadores em tempo real de outros usuários
-                appState.get('markers').on((data) => {
-                    if (data) {
-                        try {
-                            markers = JSON.parse(data);
-                            renderMarkers();
-                        } catch (e) {}
-                    }
-                });
+                // Iniciar escuta de eventos via Server-Sent Events (SSE) sem necessidade de conta
+                iniciarEscutaRede();
 
-                // Escutar definições gerais em tempo real
-                appState.get('generalDefs').on((data) => {
-                    if (typeof data === 'string') {
-                        document.getElementById('generalDefinitions').value = data;
-                    }
-                });
-
+                // Polling de backup a cada 8 segundos
+                setInterval(buscarAtualizacoesServidor, 8000);
             } catch (err) {
                 console.error("Erro na inicialização:", err);
             }
         }
 
-        function sincronizarComRede() {
-            appState.get('markers').put(JSON.stringify(markers));
+        function iniciarEscutaRede() {
+            try {
+                const eventSource = new EventSource("https://ntfy.sh/pid_inspector_vapor_tg1_channel/sse");
+                eventSource.onmessage = (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data.message) {
+                            const parsed = JSON.parse(data.message);
+                            processarDadosRecebidos(parsed);
+                        }
+                    } catch (err) {}
+                };
+            } catch (err) {
+                console.warn("EventSource não suportado, usando polling.");
+            }
+        }
+
+        async function buscarAtualizacoesServidor() {
+            try {
+                const res = await fetch("https://ntfy.sh/pid_inspector_vapor_tg1_channel/json?poll=1");
+                if (res.ok) {
+                    const text = await res.text();
+                    const lines = text.trim().split("\n");
+                    lines.forEach(line => {
+                        try {
+                            const obj = JSON.parse(line);
+                            if (obj.message) {
+                                const parsed = JSON.parse(obj.message);
+                                processarDadosRecebidos(parsed);
+                            }
+                        } catch (e) {}
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function processarDadosRecebidos(data) {
+            if (!data || !data.timestamp) return;
+
+            const myLastUpdate = parseInt(localStorage.getItem(SYNC_ROOM_KEY + '_my_time') || '0');
+            if (data.timestamp <= myLastUpdate) return; // Ignorar alterações antigas próprias
+
+            if (data.markers) {
+                markers = data.markers;
+                localStorage.setItem(SYNC_ROOM_KEY + '_markers', JSON.stringify(markers));
+                renderMarkers();
+            }
+
+            if (data.generalDefs !== undefined) {
+                generalDefs = data.generalDefs;
+                localStorage.setItem(SYNC_ROOM_KEY + '_defs', generalDefs);
+                document.getElementById('generalDefinitions').value = generalDefs;
+            }
+
+            mostrarStatusSync("Atualizado de outro dispositivo");
+        }
+
+        async function transmitirMudancas() {
+            const now = Date.now();
+            localStorage.setItem(SYNC_ROOM_KEY + '_my_time', now.toString());
+            localStorage.setItem(SYNC_ROOM_KEY + '_markers', JSON.stringify(markers));
+            localStorage.setItem(SYNC_ROOM_KEY + '_defs', generalDefs);
+
+            const payload = {
+                timestamp: now,
+                markers: markers,
+                generalDefs: generalDefs
+            };
+
+            mostrarStatusSync("Enviando...");
+
+            try {
+                await fetch(SYNC_SERVER_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                mostrarStatusSync("Sincronizado ao vivo");
+            } catch (err) {
+                mostrarStatusSync("Salvo localmente");
+            }
+        }
+
+        function forcarSincronizacaoManual() {
+            buscarAtualizacoesServidor();
+            mostrarStatusSync("Sincronizado");
+        }
+
+        function mostrarStatusSync(msg) {
+            const textElem = document.getElementById('syncBadgeText');
+            if (textElem) textElem.textContent = msg;
         }
 
         async function carregarPdf(url) {
@@ -442,7 +519,7 @@
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
-            sincronizarComRede();
+            transmitirMudancas();
         }
 
         function renderMarkers() {
@@ -603,7 +680,7 @@
 
             limparFormulario();
             renderMarkers();
-            sincronizarComRede();
+            transmitirMudancas();
         }
 
         function limparFormulario() {
@@ -644,7 +721,7 @@
                     if (Array.isArray(imported)) {
                         markers = imported;
                         renderMarkers();
-                        sincronizarComRede();
+                        transmitirMudancas();
                         alert('Backup importado com sucesso!');
                     } else {
                         alert('Arquivo JSON inválido.');
@@ -708,12 +785,12 @@
 
         let defsTimer = null;
         function salvarDefinicoesGerais() {
-            const text = document.getElementById('generalDefinitions').value;
+            generalDefs = document.getElementById('generalDefinitions').value;
             const alertElem = document.getElementById('defsSavedAlert');
             alertElem.style.opacity = '1';
             clearTimeout(defsTimer);
             defsTimer = setTimeout(() => {
-                appState.get('generalDefs').put(text);
+                transmitirMudancas();
                 alertElem.style.opacity = '0';
             }, 1000);
         }
