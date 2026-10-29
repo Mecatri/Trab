@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inspector de P&ID - Supabase Storage</title>
+    <title>P&ID Inspector Pro - Gestão de Instrumentação</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -24,34 +24,61 @@
         .no-select {
             user-select: none;
         }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
     <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
-    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-20">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-30 shadow-md">
         <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-2">
-                <span class="text-xl">⚙️</span>
-                <h1 class="text-base font-bold text-blue-400">P&ID Inspector</h1>
+                <span class="text-xl">⚡</span>
+                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
             </div>
             <!-- ABAS SUPERIORES -->
             <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
-                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition">Visualizador P&ID</button>
+                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow">Visualizador P&ID</button>
                 <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
             </div>
         </div>
 
-        <!-- CONTROLES DE PÁGINA E ZOOM -->
-        <div id="pidControls" class="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
-            <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">◀</button>
-            <span id="pageInfo" class="font-semibold text-gray-300">Pág: 1/1</span>
-            <button onclick="mudarPagina(1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">▶</button>
-            <div class="h-3 w-px bg-gray-600 mx-1"></div>
-            <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold">+</button>
-            <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center">100%</span>
-            <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold">-</button>
-            <button onclick="resetarZoomFit()" class="px-2 py-1 bg-blue-600 text-white rounded">Ajustar</button>
+        <!-- CONTROLES DE PÁGINA, ZOOM E ARQUIVO -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Seletor de Arquivo PDF / Supabase -->
+            <div class="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700 text-xs">
+                <label for="pdfFileInput" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1">
+                    📂 <span>Abrir PDF</span>
+                </label>
+                <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="carregarPdfLocal(event)">
+                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px]" title="Recarregar do Supabase Storage">Supabase</button>
+            </div>
+
+            <!-- Controles de Pág e Zoom -->
+            <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
+                <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
+                <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
+                <button onclick="mudarPagina(1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Próxima Página">▶</button>
+                <div class="h-3 w-px bg-gray-600 mx-1"></div>
+                <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Aumentar Zoom">+</button>
+                <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center">100%</span>
+                <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Diminuir Zoom">-</button>
+                <button onclick="resetarZoomFit()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium">Ajustar</button>
+            </div>
         </div>
     </header>
 
@@ -70,22 +97,37 @@
         </main>
 
         <!-- PAINEL LATERAL DE INSTRUMENTOS -->
-        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[45vh] md:max-h-full z-30">
-            <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center gap-2">
-                <span>📍</span> Configuração do Instrumento
+        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[50vh] md:max-h-full z-30 shadow-xl">
+            <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center justify-between">
+                <span class="flex items-center gap-2"><span>📍</span> Configuração do Instrumento</span>
+                <span id="totalMarkersCount" class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full font-mono">0 itens</span>
             </h2>
 
-            <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3">
-                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
+            <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
+                Clique em qualquer ponto do PDF para posicionar um marcador ou selecione um abaixo para editar.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-2.5 text-xs">
                 <input type="hidden" id="markerId">
 
-                <div>
-                    <label class="block font-semibold text-gray-400 mb-0.5">TAG / KKS:</label>
-                    <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <label class="block font-semibold text-gray-400 mb-0.5">TAG / KKS:</label>
+                        <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
+                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-400 mb-0.5">Tipo:</label>
+                        <select id="inputType" class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                            <option value="PT">Pressão (PT/PI)</option>
+                            <option value="TT">Temperatura (TT/TI)</option>
+                            <option value="FT">Vazão (FT/FI)</option>
+                            <option value="LT">Nível (LT/LI)</option>
+                            <option value="XV">Válvula (XV/CV/MOV)</option>
+                            <option value="EL">Elétrico/Controle (KKS/PLC)</option>
+                            <option value="GEN" selected>Outro / Geral</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
@@ -96,7 +138,7 @@
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">Range:</label>
+                        <label class="block font-semibold text-gray-400 mb-0.5">Range / Escala:</label>
                         <input type="text" id="inputRange" placeholder="0 - 150 bar" 
                                class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
                     </div>
@@ -109,44 +151,65 @@
 
                 <div>
                     <label class="block font-semibold text-gray-400 mb-0.5">Correlacionar com outra TAG:</label>
-                    <input type="text" id="inputCorrelatedTag" placeholder="Digite a TAG exata (ex: 10LBA10CT010)" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
-                    <span class="text-[10px] text-gray-500">A linha amarela aparecerá ligando as TAGs.</span>
+                    <input type="text" id="inputCorrelatedTag" placeholder="TAG exata para ligar (ex: 10LBA10CT010)" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
+                    <span class="text-[10px] text-gray-500">Uma linha tracejada amarela ligará as TAGs na mesma página.</span>
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-0.5">Comentários:</label>
-                    <textarea id="inputComments" rows="2" placeholder="Observações..." 
+                    <label class="block font-semibold text-gray-400 mb-0.5">Comentários / Observações:</label>
+                    <textarea id="inputComments" rows="2" placeholder="Notas de comissionamento..." 
                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
                 </div>
 
                 <div class="flex gap-2 pt-1">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition">Salvar</button>
-                    <button type="button" onclick="excluirMarcador()" class="bg-red-900/40 hover:bg-red-800 border border-red-700 text-red-200 px-3 py-1.5 rounded transition">Excluir</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow">Salvar Marcador</button>
+                    <button type="button" onclick="excluirMarcador()" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 px-3 py-1.5 rounded transition" title="Excluir selecionado">Excluir</button>
+                    <button type="button" onclick="limparFormulario()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded transition" title="Limpar formulário">Limpar</button>
                 </div>
             </form>
 
             <hr class="border-gray-800 my-3">
 
-            <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Marcadores na Pág. <span id="currentPageNumDisplay">1</span>
-            </h3>
-            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-40"></div>
+            <!-- BARRA DE BUSCA E LISTA DE MARCADORES -->
+            <div class="flex flex-col gap-2 mb-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                        Marcadores (Pág. <span id="currentPageNumDisplay">1</span>)
+                    </h3>
+                    <input type="text" id="searchFilter" placeholder="Filtrar TAGs..." oninput="renderMarkers()"
+                           class="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-[11px] text-white focus:outline-none focus:border-blue-500 w-36">
+                </div>
+            </div>
+
+            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-48 pr-1"></div>
+
+            <!-- FERRAMENTAS DE EXPORTAÇÃO E IMPORTAÇÃO -->
+            <div class="border-t border-gray-800 pt-3 mt-3 grid grid-cols-3 gap-1.5">
+                <button onclick="exportarJson()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Baixar Backup JSON">📥 Exportar</button>
+                <label class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center cursor-pointer" title="Restaurar Backup JSON">
+                    📤 Importar <input type="file" accept=".json" class="hidden" onchange="importarJson(event)">
+                </label>
+                <button onclick="exportarCsv()" class="bg-gray-800 hover:bg-gray-700 text-blue-400 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Exportar Tabela CSV">📊 Relatório</button>
+            </div>
         </aside>
     </div>
 
     <!-- TELA 2: DEFINIÇÕES GERAIS -->
     <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
-        <h2 class="text-lg font-bold text-blue-400 mb-2">Definições Gerais e Notas do Projeto</h2>
-        <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, escopo e notas técnicas que se aplicam ao fluxograma.</p>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
+            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo automaticamente</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
                   oninput="salvarDefinicoesGerais()"
-                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed"></textarea>
-        <div id="defsSavedAlert" class="text-xs text-green-400 text-right mt-2 opacity-0 transition-opacity">✔ Salvo automaticamente no navegador</div>
+                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
     <script>
-        const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/1.pdf";
+        const supabaseDefaultUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/1.pdf";
+        let currentPdfSource = supabaseDefaultUrl;
         
         let pdfDoc = null;
         let pageNum = 1;
@@ -158,7 +221,7 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem('supabase_pdf_markers_v3') || '[]');
+        let markers = JSON.parse(localStorage.getItem('pid_inspector_markers_v4') || '[]');
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -167,16 +230,49 @@
         const wrapper = document.getElementById('canvasWrapper');
         const container = document.getElementById('viewerContainer');
 
+        // Cores por tipo de instrumento
+        const typeColors = {
+            PT: 'bg-amber-600 text-white',
+            TT: 'bg-rose-600 text-white',
+            FT: 'bg-cyan-600 text-white',
+            LT: 'bg-emerald-600 text-white',
+            XV: 'bg-purple-600 text-white',
+            EL: 'bg-yellow-500 text-black font-bold',
+            GEN: 'bg-blue-600 text-white'
+        };
+
         async function init() {
             try {
-                const loadingTask = pdfjsLib.getDocument(pdfUrl);
-                pdfDoc = await loadingTask.promise;
+                await carregarPdf(currentPdfSource);
                 carregarDefinicoesGerais();
-                await renderPage(pageNum, true);
             } catch (err) {
-                console.error("Erro ao carregar o PDF:", err);
-                alert("Erro ao carregar o PDF do Supabase Storage.");
+                console.error("Erro ao carregar o PDF inicial:", err);
+                alert("Erro ao carregar o PDF padrão. Utilize o botão 'Abrir PDF' para carregar um arquivo local.");
             }
+        }
+
+        async function carregarPdf(urlOrSource) {
+            const loadingTask = pdfjsLib.getDocument(urlOrSource);
+            pdfDoc = await loadingTask.promise;
+            pageNum = 1;
+            await renderPage(pageNum, true);
+        }
+
+        async function carregarPdfSupabase() {
+            currentPdfSource = supabaseDefaultUrl;
+            await carregarPdf(currentPdfSource);
+        }
+
+        function carregarPdfLocal(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                currentPdfSource = typedarray;
+                await carregarPdf(currentPdfSource);
+            };
+            fileReader.readAsArrayBuffer(file);
         }
 
         async function renderPage(num, isInitial = false) {
@@ -228,11 +324,11 @@
         }
 
         function alterarZoom(delta) {
-            scale = Math.max(fitScale * 0.5, Math.min(fitScale * 5.0, scale + delta));
+            scale = Math.max(fitScale * 0.4, Math.min(fitScale * 6.0, scale + delta));
             renderPage(pageNum);
         }
 
-        // Zoom com Ctrl + Scroll
+        // Atalhos de Zoom e Navegação
         window.addEventListener('wheel', function(e) {
             if (e.ctrlKey) {
                 e.preventDefault();
@@ -240,7 +336,7 @@
             }
         }, { passive: false });
 
-        // Pan por arrasto
+        // Pan por arrasto (Mouse)
         container.addEventListener('mousedown', function(e) {
             if (e.target.closest('.marker-wrapper')) return;
             isDragging = true;
@@ -257,7 +353,7 @@
 
         window.addEventListener('mouseup', function() { isDragging = false; });
 
-        // Clique para criar marcador
+        // Clique para criar marcador no PDF
         canvas.addEventListener('click', function(e) {
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) / canvas.width;
@@ -271,20 +367,21 @@
         });
 
         function salvarMarcador() {
-            const tag = document.getElementById('inputTag').value.trim();
-            if (!tag) return alert('Informe a TAG / KKS.');
+            const tag = document.getElementById('inputTag').value.trim().toUpperCase();
+            if (!tag) return alert('Informe a TAG / KKS do instrumento.');
 
             const id = document.getElementById('markerId').value || Date.now().toString();
+            const type = document.getElementById('inputType').value;
             const desc = document.getElementById('inputDesc').value.trim();
             const range = document.getElementById('inputRange').value.trim();
             const alarms = document.getElementById('inputAlarms').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
-            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim();
+            const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
 
             const existingIndex = markers.findIndex(m => m.id === id);
 
             if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, desc, range, alarms, comments, correlatedTag };
+                markers[existingIndex] = { ...markers[existingIndex], tag, type, desc, range, alarms, comments, correlatedTag };
             } else {
                 if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
                 markers.push({
@@ -293,6 +390,7 @@
                     x: pendingCoords.x,
                     y: pendingCoords.y,
                     tag,
+                    type,
                     desc,
                     range,
                     alarms,
@@ -301,7 +399,7 @@
                 });
             }
 
-            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            localStorage.setItem('pid_inspector_markers_v4', JSON.stringify(markers));
             selectedMarkerId = id;
             pendingCoords = null;
             renderMarkers();
@@ -316,12 +414,14 @@
             const list = document.getElementById('markersList');
             list.innerHTML = '';
 
+            const filterText = document.getElementById('searchFilter').value.toLowerCase();
             const pageMarkers = markers.filter(m => m.page === pageNum);
+            
+            document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Desenhar linhas de correlação baseadas na TAG digitada
+            // Desenhar linhas de correlação na página
             pageMarkers.forEach(m => {
                 if (m.correlatedTag) {
-                    // Procurar outro marcador na mesma página com a TAG informada
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
                     if (target) {
                         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -329,43 +429,51 @@
                         line.setAttribute('y1', `${m.y * 100}%`);
                         line.setAttribute('x2', `${target.x * 100}%`);
                         line.setAttribute('y2', `${target.y * 100}%`);
-                        line.setAttribute('stroke', '#fde047'); // Amarelo claro (yellow-300)
+                        line.setAttribute('stroke', '#fde047'); // Amarelo
                         line.setAttribute('stroke-width', '2');
-                        line.setAttribute('stroke-dasharray', '4');
+                        line.setAttribute('stroke-dasharray', '5');
                         svgSvg.appendChild(line);
                     }
                 }
             });
 
-            // Ponto temporário
+            // Ponto temporário de criação
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
-                tempDot.className = 'absolute marker-dot w-5 h-5 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
+                tempDot.className = 'absolute marker-dot w-6 h-6 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
                 tempDot.style.left = `${pendingCoords.x * 100}%`;
                 tempDot.style.top = `${pendingCoords.y * 100}%`;
                 layer.appendChild(tempDot);
             }
 
+            let visibleCount = 0;
             pageMarkers.forEach(m => {
-                const isSelected = selectedMarkerId === m.id;
+                const matchesFilter = m.tag.toLowerCase().includes(filterText) || (m.desc && m.desc.toLowerCase().includes(filterText));
+                if (!matchesFilter && filterText) return;
+                visibleCount++;
 
+                const isSelected = selectedMarkerId === m.id;
+                const colorClass = typeColors[m.type] || typeColors.GEN;
+
+                // Elemento no canvas
                 const wrapperElem = document.createElement('div');
                 wrapperElem.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
                 wrapperElem.style.left = `${m.x * 100}%`;
                 wrapperElem.style.top = `${m.y * 100}%`;
 
                 const dot = document.createElement('div');
-                dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 ${
-                    isSelected ? 'bg-yellow-400 text-black font-bold ring-4 ring-yellow-300/50' : 'bg-blue-600 text-white'
+                dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 ${colorClass} ${
+                    isSelected ? 'ring-4 ring-yellow-400 scale-110' : 'border border-gray-900'
                 }`;
                 dot.innerHTML = '📍';
 
                 const tooltip = document.createElement('div');
-                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 border border-gray-700 text-gray-100 p-2 rounded shadow-xl z-40 pointer-events-none text-xs';
+                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-gray-900 border border-gray-700 text-gray-100 p-2.5 rounded-lg shadow-2xl z-40 pointer-events-none text-xs';
                 tooltip.innerHTML = `
-                    <div class="font-bold text-blue-400">${m.tag}</div>
-                    <div class="text-gray-300 mt-0.5">${m.desc || 'Sem descrição'}</div>
-                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1">🔗 Ligado a: ${m.correlatedTag}</div>` : ''}
+                    <div class="font-bold text-blue-400 flex justify-between"><span>${m.tag}</span><span class="text-[10px] bg-gray-800 px-1 rounded text-gray-300">${m.type}</span></div>
+                    <div class="text-gray-300 mt-1">${m.desc || 'Sem descrição'}</div>
+                    ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5">Range: ${m.range}</div>` : ''}
+                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 ${m.correlatedTag}</div>` : ''}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -373,15 +481,25 @@
                 wrapperElem.onclick = (e) => { e.stopPropagation(); carregarMarcadorForm(m.id); };
                 layer.appendChild(wrapperElem);
 
-                // Lista lateral
+                // Item na lista lateral
                 const listItem = document.createElement('div');
                 listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
-                    isSelected ? 'bg-gray-800 border-blue-500' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
+                    isSelected ? 'bg-gray-800 border-blue-500 shadow' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
                 }`;
-                listItem.innerHTML = `<div class="font-bold text-blue-400">${m.tag}</div><div class="text-gray-400 truncate">${m.desc || 'Sem descrição'}</div>`;
+                listItem.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-blue-400 font-mono">${m.tag}</span>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono ${colorClass}">${m.type}</span>
+                    </div>
+                    <div class="text-gray-400 truncate mt-0.5">${m.desc || 'Sem descrição'}</div>
+                `;
                 listItem.onclick = () => carregarMarcadorForm(m.id);
                 list.appendChild(listItem);
             });
+
+            if (visibleCount === 0 && filterText) {
+                list.innerHTML = `<div class="text-xs text-gray-500 text-center py-4">Nenhum marcador encontrado.</div>`;
+            }
         }
 
         function carregarMarcadorForm(id) {
@@ -393,6 +511,7 @@
 
             document.getElementById('markerId').value = m.id;
             document.getElementById('inputTag').value = m.tag;
+            document.getElementById('inputType').value = m.type || 'GEN';
             document.getElementById('inputDesc').value = m.desc || '';
             document.getElementById('inputRange').value = m.range || '';
             document.getElementById('inputAlarms').value = m.alarms || '';
@@ -404,10 +523,11 @@
 
         function excluirMarcador() {
             const id = document.getElementById('markerId').value;
-            if (!id) return alert('Selecione um marcador.');
+            if (!id) return alert('Selecione um marcador para excluir.');
+
+            if (!confirm('Deseja realmente excluir este marcador?')) return;
 
             markers = markers.filter(m => m.id !== id);
-            // Limpar referências de correlação que apontavam para este marcador
             const tagExcluida = document.getElementById('inputTag').value.trim();
             markers.forEach(m => {
                 if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
@@ -415,7 +535,7 @@
                 }
             });
 
-            localStorage.setItem('supabase_pdf_markers_v3', JSON.stringify(markers));
+            localStorage.setItem('pid_inspector_markers_v4', JSON.stringify(markers));
             limparFormulario();
             renderMarkers();
         }
@@ -424,16 +544,68 @@
             selectedMarkerId = null;
             pendingCoords = null;
             limparFormularioCampos();
+            renderMarkers();
         }
 
         function limparFormularioCampos() {
             document.getElementById('markerId').value = '';
             document.getElementById('inputTag').value = '';
+            document.getElementById('inputType').value = 'GEN';
             document.getElementById('inputDesc').value = '';
             document.getElementById('inputRange').value = '';
             document.getElementById('inputAlarms').value = '';
             document.getElementById('inputComments').value = '';
             document.getElementById('inputCorrelatedTag').value = '';
+        }
+
+        // Exportar e Importar JSON
+        function exportarJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(markers, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `pid_markers_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importarJson(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        markers = imported;
+                        localStorage.setItem('pid_inspector_markers_v4', JSON.stringify(markers));
+                        renderMarkers();
+                        alert('Backup importado com sucesso!');
+                    } else {
+                        alert('Arquivo JSON inválido.');
+                    }
+                } catch (err) {
+                    alert('Erro ao processar o arquivo JSON.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Exportar Relatório CSV
+        function exportarCsv() {
+            if (markers.length === 0) return alert('Não há marcadores para exportar.');
+            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Alarmes;TAG_Correlacionada;Comentarios\n';
+            markers.forEach(m => {
+                csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","${(m.alarms || '').replace(/"/g, '""')}","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
+            });
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", url);
+            dlAnchor.setAttribute("download", `relatorio_instrumentos_pid_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
         }
 
         // ABAS PRINCIPAIS
@@ -442,7 +614,7 @@
             const screenDefs = document.getElementById('screenDefs');
             const btnPid = document.getElementById('topTabPid');
             const btnDefs = document.getElementById('topTabDefs');
-            const pidControls = document.getElementById('pidControls');
+            const pidControls = document.getElementById('pidControls').parentElement;
 
             if (tela === 'pid') {
                 screenPid.classList.remove('hidden');
@@ -451,7 +623,7 @@
                 screenDefs.classList.remove('flex');
                 pidControls.classList.remove('hidden');
 
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
                 btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
             } else {
                 screenDefs.classList.remove('hidden');
@@ -460,7 +632,7 @@
                 screenPid.classList.remove('flex');
                 pidControls.classList.add('hidden');
 
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
                 btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
             }
         }
@@ -469,16 +641,16 @@
         let defsTimer = null;
         function salvarDefinicoesGerais() {
             const text = document.getElementById('generalDefinitions').value;
-            localStorage.setItem('supabase_pdf_general_defs', text);
+            localStorage.setItem('pid_inspector_general_defs', text);
 
             const alertElem = document.getElementById('defsSavedAlert');
             alertElem.style.opacity = '1';
             clearTimeout(defsTimer);
-            defsTimer = setTimeout(() => { alertElem.style.opacity = '0'; }, 1500);
+            defsTimer = setTimeout(() => { alertElem.style.opacity = '0'; }, 2000);
         }
 
         function carregarDefinicoesGerais() {
-            const saved = localStorage.getItem('supabase_pdf_general_defs') || '';
+            const saved = localStorage.getItem('pid_inspector_general_defs') || '';
             document.getElementById('generalDefinitions').value = saved;
         }
 
