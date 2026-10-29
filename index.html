@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P&ID Inspector Pro - Gestão de Instrumentação</title>
+    <title>P&ID Inspector Pro - Gestão de Instrumentação & Alarmes</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -11,6 +11,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .marker-dot {
             transform: translate(-50%, -50%);
@@ -24,7 +26,7 @@
         .no-select {
             user-select: none;
         }
-        /* Custom Scrollbar */
+        /* Scrollbars customizadas */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -34,7 +36,7 @@
         }
         ::-webkit-scrollbar-thumb {
             background: #1f2937;
-            border-radius: 3px;
+            border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #374151;
@@ -44,40 +46,60 @@
 <body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans no-select">
 
     <!-- CABEÇALHO DA APLICAÇÃO & ABAS PRINCIPAIS -->
-    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex flex-col md:flex-row justify-between items-center gap-3 z-30 shadow-md">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-2.5 z-30 shadow-lg">
         <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-2">
                 <span class="text-xl">⚙️</span>
-                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded font-mono">PRO</span></h1>
+                <h1 class="text-base font-bold text-blue-400 tracking-wide">P&ID Inspector <span class="text-xs bg-blue-900/80 text-blue-300 px-1.5 py-0.5 rounded font-mono border border-blue-700/50">PRO v4.0</span></h1>
+                
+                <!-- INDICADOR DE SINCRONIZAÇÃO EM TEMPO REAL -->
+                <div id="syncIndicator" class="ml-2 flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400 font-mono">
+                    <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="syncText">Conectando...</span>
+                </div>
             </div>
             <!-- ABAS SUPERIORES -->
-            <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
-                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow">Visualizador P&ID</button>
-                <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
+            <div class="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
+                <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-map-location-dot"></i> Visualizador P&ID
+                </button>
+                <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-contract"></i> Definições do Projeto
+                </button>
             </div>
         </div>
 
         <!-- CONTROLES DE PÁGINA, ZOOM E ARQUIVO -->
         <div class="flex flex-wrap items-center gap-2">
             <!-- Seletor de Arquivo PDF / Supabase -->
-            <div class="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700 text-xs">
-                <label for="pdfFileInput" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1">
-                    📂 <span>Abrir PDF</span>
+            <div class="flex items-center gap-1 bg-gray-950 px-2 py-1 rounded-lg border border-gray-800 text-xs">
+                <label for="pdfFileInput" class="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1 rounded transition flex items-center gap-1 font-medium">
+                    <i class="fa-solid fa-folder-open text-blue-400"></i> <span>Abrir PDF</span>
                 </label>
                 <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="carregarPdfLocal(event)">
-                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px]" title="Recarregar do Supabase Storage">Supabase</button>
+                <button onclick="carregarPdfSupabase()" class="text-gray-400 hover:text-white px-1.5 py-1 text-[11px] transition" title="Restaurar PDF Padrão Supabase">Supabase</button>
             </div>
 
             <!-- Controles de Pág e Zoom -->
-            <div id="pidControls" class="flex items-center gap-1.5 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 text-xs">
-                <button onclick="mudarPagina(-1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Página Anterior">◀</button>
-                <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center">Pág: 1/1</span>
-                <button onclick="mudarPagina(1)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition" title="Próxima Página">▶</button>
-                <div class="h-3 w-px bg-gray-600 mx-1"></div>
-                <button onclick="alterarZoom(0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Aumentar Zoom">+</button>
-                <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center">100%</span>
-                <button onclick="alterarZoom(-0.15)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded font-bold" title="Diminuir Zoom">-</button>
-                <button onclick="resetarZoomFit()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium">Ajustar</button>
+            <div id="pidControls" class="flex items-center gap-1.5 bg-gray-950 px-2.5 py-1 rounded-lg border border-gray-800 text-xs">
+                <button onclick="mudarPagina(-1)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Página Anterior">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span id="pageInfo" class="font-semibold text-gray-300 min-w-[55px] text-center font-mono">Pág: 1/1</span>
+                <button onclick="mudarPagina(1)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Próxima Página">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <div class="h-3 w-px bg-gray-800 mx-1"></div>
+
+                <button onclick="alterarZoom(-0.15)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Reduzir Zoom">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <span id="zoomInfo" class="text-gray-400 min-w-[35px] text-center font-mono">100%</span>
+                <button onclick="alterarZoom(0.15)" class="p-1 hover:bg-gray-800 rounded text-gray-300" title="Aumentar Zoom">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <button onclick="resetarZoomFit()" class="px-2 py-0.5 bg-blue-600/30 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded text-[11px] font-semibold transition ml-1">Ajustar</button>
             </div>
         </div>
     </header>
@@ -85,140 +107,291 @@
     <!-- TELA 1: VISUALIZADOR P&ID + PAINEL DE INSTRUMENTOS -->
     <div id="screenPid" class="flex flex-1 flex-col md:flex-row overflow-hidden relative">
         
-        <!-- CANVAS DO PDF -->
-        <main class="flex-1 overflow-hidden relative bg-gray-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
-            <div id="canvasWrapper" class="relative shadow-2xl border border-gray-800 rounded bg-white transition-transform duration-75 origin-top-left">
+        <!-- CANVAS CONTAINER (MAIN VIEWER) -->
+        <main class="flex-1 overflow-hidden relative bg-slate-950 flex items-center justify-center cursor-grab active:cursor-grabbing" id="viewerContainer">
+            <div id="canvasWrapper" class="relative shadow-2xl border border-slate-800 rounded bg-white transition-transform duration-75 origin-top-left">
                 <canvas id="pdfCanvas" class="block"></canvas>
-                <!-- SVG para as linhas de correlação entre instrumentos -->
+                <!-- SVG layer for correlation lines -->
                 <svg id="correlationsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
-                <!-- Camada de marcadores -->
+                <!-- Markers Layer -->
                 <div id="markersLayer" class="absolute inset-0 pointer-events-none z-20"></div>
+            </div>
+
+            <!-- Overlay Badge for drag/zoom hint -->
+            <div class="absolute bottom-3 left-3 bg-slate-900/80 border border-slate-800 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] text-slate-400 pointer-events-none z-20 flex items-center gap-2 shadow-lg">
+                <span class="flex items-center gap-1"><i data-lucide="mouse-pointer" class="w-3 h-3 text-blue-400"></i> Clique no PDF p/ Tag</span>
+                <span class="text-slate-600">•</span>
+                <span class="flex items-center gap-1"><i data-lucide="move" class="w-3 h-3 text-emerald-400"></i> Arraste p/ Mover</span>
+                <span class="text-slate-600">•</span>
+                <span class="flex items-center gap-1"><i data-lucide="zoom-in" class="w-3 h-3 text-amber-400"></i> Ctrl+Scroll Zoom</span>
             </div>
         </main>
 
-        <!-- PAINEL LATERAL DE INSTRUMENTOS -->
-        <aside class="w-full md:w-96 lg:w-[420px] bg-gray-900 border-t md:border-t-0 md:border-l border-gray-800 flex flex-col p-4 overflow-y-auto max-h-[50vh] md:max-h-full z-30 shadow-xl">
-            <h2 class="text-sm font-bold text-blue-400 border-b border-gray-800 pb-2 mb-3 flex items-center justify-between">
-                <span class="flex items-center gap-2"><span>📍</span> Configuração do Instrumento</span>
-                <span id="totalMarkersCount" class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full font-mono">0 itens</span>
-            </h2>
-
-            <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
-                Clique no PDF para posicionar um marcador ou escolha um da lista abaixo para editar.
+        <!-- SIDEBAR DE PAINEL DE INSTRUMENTOS -->
+        <aside id="sidebarPanel" class="w-full md:w-80 lg:w-96 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col p-3.5 overflow-y-auto max-h-[50vh] md:max-h-full z-20 shrink-0 shadow-2xl">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
+                <h2 class="text-xs font-bold text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
+                    <i data-lucide="map-pin" class="w-4 h-4"></i> Instrumento / Marcador
+                </h2>
+                <span id="markerCountBadge" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono">0 Tags</span>
             </div>
 
-            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
+            <!-- FORMULÁRIO -->
+            <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-2.5 text-xs">
                 <input type="hidden" id="markerId">
 
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="col-span-2">
-                        <label class="block font-semibold text-gray-400 mb-0.5">TAG / KKS:</label>
-                        <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
-                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">Tipo:</label>
-                        <select id="inputType" class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white focus:outline-none focus:border-blue-500">
-                            <option value="PT">Pressão (PT/PI)</option>
-                            <option value="TT">Temperatura (TT/TI)</option>
-                            <option value="FT">Vazão (FT/FI)</option>
-                            <option value="LT">Nível (LT/LI)</option>
-                            <option value="XV">Válvula (XV/CV)</option>
-                            <option value="EL">Elétrico/Controle</option>
-                            <option value="GEN" selected>Outro / Geral</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                        <span>TAG / KKS <span class="text-red-400">*</span></span>
+                        <span id="coordsBadge" class="text-[10px] font-mono text-slate-500 font-normal">Coord: -</span>
+                    </label>
+                    <input type="text" id="inputTag" placeholder="Ex: 10LBA10CP010" required 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 uppercase font-mono transition">
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-0.5">Descrição:</label>
-                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Vapor TG-1" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                    <label class="block font-semibold text-slate-400 mb-1">Descrição / Serviço:</label>
+                    <input type="text" id="inputDesc" placeholder="Ex: Pressão de Entrada do Vapor Principal" 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">Range / Escala:</label>
-                        <input type="text" id="inputRange" placeholder="Ex: 0 - 100 bar" 
-                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500">
+                        <label class="block font-semibold text-slate-400 mb-1">Faixa / Range:</label>
+                        <input type="text" id="inputRange" placeholder="Ex: 0 - 150 bar" 
+                               class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition">
                     </div>
                     <div>
-                        <label class="block font-semibold text-gray-400 mb-0.5">TAG Correlacionada:</label>
-                        <input type="text" id="inputCorrelatedTag" placeholder="Ex: 10LBA10CT010" 
-                               class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
-                    </div>
-                </div>
-
-                <!-- TABELA DE ALARMES E TRIPS -->
-                <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800 space-y-2">
-                    <div class="flex justify-between items-center border-b border-gray-800 pb-1.5">
-                        <label class="font-bold text-blue-400 text-[11px] flex items-center gap-1">
-                            <span>🚨</span> Matriz de Alarmes e Intertravamentos
-                        </label>
-                        <button type="button" onclick="adicionarLinhaAlarme()" 
-                                class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded transition font-semibold">
-                            + Adicionar Alarme
-                        </button>
-                    </div>
-
-                    <div id="alarmsContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                        <!-- Linhas de alarme injetadas dinamicamente aqui -->
+                        <label class="block font-semibold text-slate-400 mb-1">Alarmes / Trips:</label>
+                        <input type="text" id="inputAlarms" placeholder="Ex: HH: 120 / L: 10 bar" 
+                               class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-gray-400 mb-0.5">Comentários / Observações:</label>
-                    <textarea id="inputComments" rows="2" placeholder="Notas técnicas ou de comissionamento..." 
-                              class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                    <label class="block font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                        <span>Correlacionar com TAG:</span>
+                        <i data-lucide="link-2" class="w-3 h-3 text-amber-400"></i>
+                    </label>
+                    <input type="text" id="inputCorrelatedTag" placeholder="TAG exata para criar linha guia" 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 uppercase font-mono transition">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-400 mb-1">Observações / Comentários:</label>
+                    <textarea id="inputComments" rows="2" placeholder="Notas de campo ou premissas do ponto..." 
+                              class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-none transition"></textarea>
                 </div>
 
                 <div class="flex gap-2 pt-1">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 rounded transition shadow">Salvar Marcador</button>
-                    <button type="button" onclick="excluirMarcador()" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 px-3 py-1.5 rounded transition" title="Excluir selecionado">Excluir</button>
-                    <button type="button" onclick="limparFormulario()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded transition" title="Limpar formulário">Limpar</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 px-3 rounded-md transition shadow flex items-center justify-center gap-1">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar TAG
+                    </button>
+                    <button type="button" onclick="limparFormulario()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 py-1.5 px-2.5 rounded-md transition" title="Novo / Limpar">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" onclick="excluirMarcador()" class="bg-rose-950/60 hover:bg-rose-900 border border-rose-700/60 text-rose-300 py-1.5 px-2.5 rounded-md transition" title="Excluir Marcador Selecionado">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
                 </div>
             </form>
 
-            <hr class="border-gray-800 my-3">
+            <hr class="border-slate-800 my-3">
 
-            <!-- BARRA DE BUSCA E LISTA DE MARCADORES -->
-            <div class="flex flex-col gap-2 mb-2">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                        Marcadores (Pág. <span id="currentPageNumDisplay">1</span>)
+            <!-- BUSCA E LISTAGEM DE MARCADORES -->
+            <div class="flex flex-col flex-1 min-h-0">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        TAGs na Pág. <span id="currentPageNumDisplay" class="text-blue-400">1</span>
                     </h3>
-                    <input type="text" id="searchFilter" placeholder="Filtrar por TAG, alarme..." oninput="renderMarkers()"
-                           class="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-[11px] text-white focus:outline-none focus:border-blue-500 w-40">
+                    <label class="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="filterAllPages" onchange="renderMarkers()" class="rounded bg-slate-950 border-slate-700 text-blue-600">
+                        Mostrar todas páginas
+                    </label>
                 </div>
-            </div>
 
-            <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto max-h-48 pr-1"></div>
+                <!-- Campo de busca -->
+                <div class="relative mb-2">
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="searchMarkerInput" oninput="renderMarkers()" placeholder="Buscar por TAG ou Descrição..." 
+                           class="w-full bg-slate-950 border border-slate-800 rounded-md pl-8 pr-2.5 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                </div>
 
-            <!-- FERRAMENTAS DE EXPORTAÇÃO E IMPORTAÇÃO -->
-            <div class="border-t border-gray-800 pt-3 mt-3 grid grid-cols-3 gap-1.5">
-                <button onclick="exportarJson()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Baixar Backup JSON">📥 Exportar</button>
-                <label class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium py-1.5 px-2 rounded transition text-center cursor-pointer" title="Restaurar Backup JSON">
-                    📤 Importar <input type="file" accept=".json" class="hidden" onchange="importarJson(event)">
-                </label>
-                <button onclick="exportarCsv()" class="bg-gray-800 hover:bg-gray-700 text-blue-400 text-[11px] font-medium py-1.5 px-2 rounded transition text-center" title="Exportar Tabela CSV de Alarmes">📊 Relatório CSV</button>
+                <div id="markersList" class="space-y-1.5 flex-1 overflow-y-auto pr-0.5">
+                    <!-- Dynamic List Items -->
+                </div>
             </div>
         </aside>
     </div>
 
     <!-- TELA 2: DEFINIÇÕES GERAIS -->
-    <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full overflow-y-auto">
+    <div id="screenDefs" class="hidden flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full overflow-y-auto">
         <div class="flex justify-between items-center mb-2">
-            <h2 class="text-lg font-bold text-blue-400">Definições Gerais, Escopo e Notas do Projeto</h2>
-            <span id="defsSavedAlert" class="text-xs text-green-400 opacity-0 transition-opacity font-medium">✔ Salvo automaticamente</span>
+            <h2 class="text-lg font-bold text-blue-400 flex items-center gap-2">
+                <i class="fa-solid fa-file-contract"></i> Definições Gerais, Escopo e Notas de Projeto
+            </h2>
+            <span id="defsSavedAlert" class="text-xs text-emerald-400 opacity-0 transition-opacity font-medium flex items-center gap-1">
+                <i class="fa-solid fa-check"></i> Salvo na nuvem
+            </span>
         </div>
         <p class="text-xs text-gray-400 mb-4">Insira abaixo todas as diretrizes gerais, premissas de projeto, premissas operacionais e notas técnicas aplicáveis ao fluxograma e comissionamento.</p>
         <textarea id="generalDefinitions" rows="18" placeholder="Escreva aqui as definições gerais..." 
-                  oninput="salvarDefinicoesGerais()"
-                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
+                  oninput="agendarSalvamentoDefinicoesGerais()"
+                  class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-mono shadow-inner"></textarea>
     </div>
 
+    <!-- FIREBASE MODULE INTEGRATION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Setup & Variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pid-inspector-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-api-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Firestore Public Collections Paths
+        const markersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'markers');
+        const defsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'general_defs', 'main');
+
+        let isCloudInitialized = false;
+
+        // UI Sync Status Helper
+        window.atualizarStatusSync = function(state, msg) {
+            const dot = document.getElementById('syncDot');
+            const text = document.getElementById('syncText');
+            if (!dot || !text) return;
+
+            if (state === 'saving') {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                text.textContent = msg || "Salvando...";
+            } else if (state === 'synced') {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                text.textContent = msg || "Ao vivo";
+            } else if (state === 'error') {
+                dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                text.textContent = msg || "Erro de conexão";
+            }
+        };
+
+        // Initialize Firebase Authentication then Realtime Listeners
+        async function setupFirebaseSync() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                atualizarStatusSync('synced', 'Ao vivo');
+
+                // 1. Escutar alterações em Tempo Real nos Marcadores de Instrumentos
+                onSnapshot(markersCollectionRef, (snapshot) => {
+                    const loadedMarkers = [];
+                    snapshot.forEach((docSnap) => {
+                        loadedMarkers.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    
+                    window.markers = loadedMarkers;
+                    if (window.renderMarkers) window.renderMarkers();
+                    atualizarStatusSync('synced', 'Ao vivo');
+                }, (error) => {
+                    console.error("Erro ao sincronizar marcadores:", error);
+                    atualizarStatusSync('error', 'Off-line');
+                });
+
+                // 2. Escutar alterações em Tempo Real nas Definições Gerais do Projeto
+                onSnapshot(defsDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const defElem = document.getElementById('generalDefinitions');
+                        if (defElem && document.activeElement !== defElem) {
+                            defElem.value = data.text || '';
+                        }
+                    }
+                }, (error) => {
+                    console.error("Erro ao sincronizar definições:", error);
+                });
+
+                isCloudInitialized = true;
+            } catch (err) {
+                console.error("Erro na autenticação Firebase:", err);
+                atualizarStatusSync('error', 'Sem conexão');
+            }
+        }
+
+        // Métodos Globais de Persistência em Nuvem
+        window.salvarMarcadorNuvem = async function(markerData) {
+            if (!auth.currentUser) return;
+            atualizarStatusSync('saving', 'Salvando...');
+            try {
+                const markerDoc = doc(db, 'artifacts', appId, 'public', 'data', 'markers', markerData.id);
+                await setDoc(markerDoc, markerData, { merge: true });
+                atualizarStatusSync('synced', 'Ao vivo');
+            } catch (err) {
+                console.error("Erro ao salvar marcador na nuvem:", err);
+                atualizarStatusSync('error', 'Erro ao salvar');
+            }
+        };
+
+        window.excluirMarcadorNuvem = async function(markerId) {
+            if (!auth.currentUser) return;
+            atualizarStatusSync('saving', 'Excluindo...');
+            try {
+                const markerDoc = doc(db, 'artifacts', appId, 'public', 'data', 'markers', markerId);
+                await deleteDoc(markerDoc);
+                atualizarStatusSync('synced', 'Ao vivo');
+            } catch (err) {
+                console.error("Erro ao excluir marcador da nuvem:", err);
+                atualizarStatusSync('error', 'Erro ao excluir');
+            }
+        };
+
+        window.salvarDefinicoesGeraisNuvem = async function(text) {
+            if (!auth.currentUser) return;
+            try {
+                await setDoc(defsDocRef, { text, updatedAt: new Date().toISOString() }, { merge: true });
+                const alertElem = document.getElementById('defsSavedAlert');
+                if (alertElem) {
+                    alertElem.style.opacity = '1';
+                    setTimeout(() => { alertElem.style.opacity = '0'; }, 2000);
+                }
+            } catch (err) {
+                console.error("Erro ao salvar definições na nuvem:", err);
+            }
+        };
+
+        window.importarMarcadoresNuvemBatch = async function(newMarkersList) {
+            if (!auth.currentUser) return;
+            atualizarStatusSync('saving', 'Importando...');
+            try {
+                for (const m of newMarkersList) {
+                    const markerDoc = doc(db, 'artifacts', appId, 'public', 'data', 'markers', m.id);
+                    await setDoc(markerDoc, m, { merge: true });
+                }
+                atualizarStatusSync('synced', 'Ao vivo');
+            } catch (err) {
+                console.error("Erro na importação em lote:", err);
+                atualizarStatusSync('error', 'Erro na importação');
+            }
+        };
+
+        setupFirebaseSync();
+    </script>
+
     <script>
-        // NOVO LINK PADRÃO SUPABASE
         const supabaseDefaultUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
         let currentPdfSource = supabaseDefaultUrl;
         
@@ -232,7 +405,8 @@
         let startX = 0;
         let startY = 0;
 
-        let markers = JSON.parse(localStorage.getItem('pid_inspector_markers_v5') || '[]');
+        // Marcadores sincronizados via Firestore
+        window.markers = [];
         let selectedMarkerId = null;
         let pendingCoords = null;
 
@@ -251,21 +425,20 @@
             GEN: 'bg-blue-600 text-white'
         };
 
-        const alarmLevelColors = {
-            HH: 'bg-red-600 text-white font-bold',
-            H: 'bg-amber-500 text-black font-semibold',
-            L: 'bg-blue-500 text-white font-semibold',
-            LL: 'bg-purple-600 text-white font-bold',
-            OTHER: 'bg-gray-600 text-white'
+        const alarmBadges = {
+            'HH': 'bg-rose-600 text-white font-bold',
+            'H': 'bg-amber-500 text-black font-semibold',
+            'L': 'bg-blue-600 text-white font-semibold',
+            'LL': 'bg-indigo-600 text-white font-bold',
+            'CUSTOM': 'bg-gray-700 text-gray-200'
         };
 
         async function init() {
             try {
                 await carregarPdf(currentPdfSource);
-                carregarDefinicoesGerais();
             } catch (err) {
                 console.error("Erro ao carregar o PDF inicial:", err);
-                alert("Erro ao carregar o PDF padrão do Supabase Storage. Você pode usar o botão 'Abrir PDF' para selecionar um arquivo local.");
+                alert("Erro ao carregar o PDF padrão. Utilize o botão 'Abrir PDF' para carregar um arquivo local.");
             }
         }
 
@@ -384,90 +557,123 @@
             renderMarkers();
         });
 
-        // MANIPULAÇÃO DA TABELA DE ALARMES
-        function adicionarLinhaAlarme(data = { level: 'H', setpoint: '', action: '' }) {
-            const container = document.getElementById('alarmsContainer');
+        // GERENCIAMENTO DA TABELA DE ALARMES NO FORMULÁRIO
+        function adicionarLinhaAlarme(tipo = 'H', setpoint = '', acao = '') {
+            const tbody = document.getElementById('alarmsTableBody');
             const rowId = 'alarm_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
 
-            const div = document.createElement('div');
-            div.className = 'flex items-center gap-1.5 alarm-row';
-            div.id = rowId;
-
-            div.innerHTML = `
-                <select class="alarm-level bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-1 py-1 focus:outline-none focus:border-blue-500 w-24">
-                    <option value="HH" ${data.level === 'HH' ? 'selected' : ''}>HH (Trava/Trip)</option>
-                    <option value="H" ${data.level === 'H' ? 'selected' : ''}>H (Alto)</option>
-                    <option value="L" ${data.level === 'L' ? 'selected' : ''}>L (Baixo)</option>
-                    <option value="LL" ${data.level === 'LL' ? 'selected' : ''}>LL (Trava/Trip)</option>
-                    <option value="OTHER" ${data.level === 'OTHER' ? 'selected' : ''}>Outro</option>
-                </select>
-                <input type="text" placeholder="Setpoint (ex: 105 bar)" value="${data.setpoint || ''}"
-                       class="alarm-setpoint bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-2 py-1 w-28 focus:outline-none focus:border-blue-500">
-                <input type="text" placeholder="Condição / Ação (ex: Desarma TG-1)" value="${data.action || ''}"
-                       class="alarm-action flex-1 bg-gray-800 border border-gray-700 text-white text-[11px] rounded px-2 py-1 focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="document.getElementById('${rowId}').remove()" 
-                        class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded text-xs" title="Remover alarme">✕</button>
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.className = "group hover:bg-gray-900/60 transition";
+            tr.innerHTML = `
+                <td class="py-1 pr-1">
+                    <select class="alarm-type-select w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white font-mono focus:border-blue-500">
+                        <option value="HH" ${tipo === 'HH' ? 'selected' : ''}>HH (Trava)</option>
+                        <option value="H" ${tipo === 'H' ? 'selected' : ''}>H (Alto)</option>
+                        <option value="L" ${tipo === 'L' ? 'selected' : ''}>L (Baixo)</option>
+                        <option value="LL" ${tipo === 'LL' ? 'selected' : ''}>LL (Trava)</option>
+                        <option value="CUSTOM" ${tipo === 'CUSTOM' ? 'selected' : ''}>Outro</option>
+                    </select>
+                </td>
+                <td class="py-1 px-1">
+                    <input type="text" value="${setpoint}" placeholder="Ex: 106 bar" 
+                           class="alarm-setpoint-input w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white font-mono focus:border-blue-500">
+                </td>
+                <td class="py-1 px-1">
+                    <input type="text" value="${acao}" placeholder="Ex: Trip de Bomba / Alarme DCS" 
+                           class="alarm-action-input w-full bg-gray-900 border border-gray-800 rounded px-1.5 py-1 text-white focus:border-blue-500">
+                </td>
+                <td class="py-1 pl-1 text-center">
+                    <button type="button" onclick="removerLinhaAlarme('${rowId}')" class="text-gray-500 hover:text-rose-400 transition" title="Remover alarme">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </td>
             `;
 
-            container.appendChild(div);
+            tbody.appendChild(tr);
+            atualizarVisibilidadeMensagemSemAlarmes();
         }
 
-        function obterAlarmesFormulario() {
-            const rows = document.querySelectorAll('.alarm-row');
-            const alarmsList = [];
-            rows.forEach(row => {
-                const level = row.querySelector('.alarm-level').value;
-                const setpoint = row.querySelector('.alarm-setpoint').value.trim();
-                const action = row.querySelector('.alarm-action').value.trim();
-                if (setpoint || action) {
-                    alarmsList.push({ level, setpoint, action });
+        function removerLinhaAlarme(rowId) {
+            const elem = document.getElementById(rowId);
+            if (elem) elem.remove();
+            atualizarVisibilidadeMensagemSemAlarmes();
+        }
+
+        function atualizarVisibilidadeMensagemSemAlarmes() {
+            const tbody = document.getElementById('alarmsTableBody');
+            const msg = document.getElementById('noAlarmsMsg');
+            msg.style.display = tbody.children.length === 0 ? 'block' : 'none';
+        }
+
+        function obterAlarmesDoFormulario() {
+            const tbody = document.getElementById('alarmsTableBody');
+            const alarmes = [];
+            Array.from(tbody.children).forEach(tr => {
+                const tipo = tr.querySelector('.alarm-type-select').value;
+                const setpoint = tr.querySelector('.alarm-setpoint-input').value.trim();
+                const acao = tr.querySelector('.alarm-action-input').value.trim();
+
+                if (setpoint || acao) {
+                    alarmes.push({ tipo, setpoint, acao });
                 }
             });
-            return alarmsList;
+            return alarmes;
         }
 
-        function salvarMarcador() {
+        function preencherTabelaAlarmes(listaAlarmes) {
+            const tbody = document.getElementById('alarmsTableBody');
+            tbody.innerHTML = '';
+            if (Array.isArray(listaAlarmes) && listaAlarmes.length > 0) {
+                listaAlarmes.forEach(a => adicionarLinhaAlarme(a.tipo || a.level, a.setpoint, a.acao || a.action));
+            } else {
+                atualizarVisibilidadeMensagemSemAlarmes();
+            }
+        }
+
+        // SALVAR INSTRUMENTO NO FIRESTORE (EM TEMPO REAL)
+        async function salvarMarcador() {
             const tag = document.getElementById('inputTag').value.trim().toUpperCase();
             if (!tag) return alert('Informe a TAG / KKS do instrumento.');
 
-            const id = document.getElementById('markerId').value || Date.now().toString();
+            const id = document.getElementById('markerId').value || 'marker_' + Date.now();
             const type = document.getElementById('inputType').value;
             const desc = document.getElementById('inputDesc').value.trim();
             const range = document.getElementById('inputRange').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
             const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
-            const alarmTable = obterAlarmesFormulario();
+            const alarms = obterAlarmesDoFormulario();
 
-            const existingIndex = markers.findIndex(m => m.id === id);
+            const existingMarker = window.markers.find(m => m.id === id);
 
-            if (existingIndex >= 0) {
-                markers[existingIndex] = { ...markers[existingIndex], tag, type, desc, range, comments, correlatedTag, alarmTable };
-            } else {
-                if (!pendingCoords) return alert('Clique primeiro no PDF para posicionar o marcador.');
-                markers.push({
-                    id,
-                    page: pageNum,
-                    x: pendingCoords.x,
-                    y: pendingCoords.y,
-                    tag,
-                    type,
-                    desc,
-                    range,
-                    comments,
-                    correlatedTag,
-                    alarmTable
-                });
-            }
+            const markerObject = {
+                id,
+                page: existingMarker ? existingMarker.page : pageNum,
+                x: existingMarker ? existingMarker.x : (pendingCoords ? pendingCoords.x : 0.5),
+                y: existingMarker ? existingMarker.y : (pendingCoords ? pendingCoords.y : 0.5),
+                tag,
+                type,
+                desc,
+                range,
+                alarms,
+                comments,
+                correlatedTag,
+                updatedAt: new Date().toISOString()
+            };
 
-            localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
             selectedMarkerId = id;
             pendingCoords = null;
-            renderMarkers();
+
+            if (window.salvarMarcadorNuvem) {
+                await window.salvarMarcadorNuvem(markerObject);
+            }
         }
 
-        function renderMarkers() {
+        window.renderMarkers = function() {
             const layer = document.getElementById('markersLayer');
             const svgSvg = document.getElementById('correlationsSvg');
+            if (!layer || !svgSvg) return;
+
             layer.innerHTML = '';
             svgSvg.innerHTML = '';
 
@@ -475,11 +681,11 @@
             list.innerHTML = '';
 
             const filterText = document.getElementById('searchFilter').value.toLowerCase();
-            const pageMarkers = markers.filter(m => m.page === pageNum);
+            const pageMarkers = (window.markers || []).filter(m => m.page === pageNum);
             
-            document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
+            document.getElementById('totalMarkersCount').textContent = `${window.markers.length} total`;
 
-            // Linhas de correlação
+            // Desenhar linhas de correlação na página
             pageMarkers.forEach(m => {
                 if (m.correlatedTag) {
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
@@ -497,7 +703,7 @@
                 }
             });
 
-            // Ponto temporário
+            // Ponto temporário de criação
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
                 tempDot.className = 'absolute marker-dot w-6 h-6 rounded-full bg-yellow-400 border-2 border-black animate-ping pointer-events-none';
@@ -508,10 +714,15 @@
 
             let visibleCount = 0;
             pageMarkers.forEach(m => {
-                const alarmsSearchText = (m.alarmTable || []).map(a => `${a.level} ${a.setpoint} ${a.action}`).join(' ').toLowerCase();
+                const alarmesMatch = Array.isArray(m.alarms) && m.alarms.some(a => 
+                    (a.tipo || a.level || '').toLowerCase().includes(filterText) || 
+                    (a.setpoint || '').toLowerCase().includes(filterText) || 
+                    (a.acao || a.action || '').toLowerCase().includes(filterText)
+                );
+
                 const matchesFilter = m.tag.toLowerCase().includes(filterText) || 
-                                      (m.desc && m.desc.toLowerCase().includes(filterText)) ||
-                                      alarmsSearchText.includes(filterText);
+                                      (m.desc && m.desc.toLowerCase().includes(filterText)) || 
+                                      alarmesMatch;
 
                 if (!matchesFilter && filterText) return;
                 visibleCount++;
@@ -530,31 +741,33 @@
                 }`;
                 dot.innerHTML = '📍';
 
-                // Montar tabela de alarmes no tooltip
-                let alarmsHtml = '';
-                if (m.alarmTable && m.alarmTable.length > 0) {
-                    alarmsHtml = `<div class="mt-2 border-t border-gray-800 pt-1.5 space-y-1">`;
-                    m.alarmTable.forEach(a => {
-                        const levelColor = alarmLevelColors[a.level] || alarmLevelColors.OTHER;
-                        alarmsHtml += `
+                let alarmesHtml = '';
+                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
+                    alarmesHtml = '<div class="mt-1.5 pt-1 border-t border-gray-800 space-y-0.5">';
+                    m.alarms.forEach(a => {
+                        const badgeClass = alarmBadges[a.tipo || a.level] || alarmBadges.CUSTOM;
+                        alarmesHtml += `
                             <div class="flex items-center gap-1 text-[10px]">
-                                <span class="px-1 py-0.2 rounded font-bold font-mono ${levelColor}">${a.level}</span>
-                                <span class="text-gray-200 font-medium">${a.setpoint || '-'}</span>
-                                <span class="text-gray-400 truncate">(${a.action || 'Sem ação'})</span>
+                                <span class="px-1 rounded font-mono text-[9px] ${badgeClass}">${a.tipo || a.level}</span>
+                                <span class="font-mono text-gray-200">${a.setpoint}</span>
+                                <span class="text-gray-400 truncate">(${a.acao || a.action || 'Sem ação'})</span>
                             </div>
                         `;
                     });
-                    alarmsHtml += `</div>`;
+                    alarmesHtml += '</div>';
                 }
 
                 const tooltip = document.createElement('div');
-                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 border border-gray-700 text-gray-100 p-2.5 rounded-lg shadow-2xl z-40 pointer-events-none text-xs';
+                tooltip.className = 'marker-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900/95 backdrop-blur border border-gray-700 text-gray-100 p-2.5 rounded-lg shadow-2xl z-40 pointer-events-none text-xs';
                 tooltip.innerHTML = `
-                    <div class="font-bold text-blue-400 flex justify-between"><span>${m.tag}</span><span class="text-[10px] bg-gray-800 px-1 rounded text-gray-300">${m.type}</span></div>
+                    <div class="font-bold text-blue-400 flex justify-between items-center">
+                        <span class="font-mono">${m.tag}</span>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono ${colorClass}">${m.type}</span>
+                    </div>
                     <div class="text-gray-300 mt-1">${m.desc || 'Sem descrição'}</div>
-                    ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5">Range: ${m.range}</div>` : ''}
-                    ${alarmsHtml}
-                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 ${m.correlatedTag}</div>` : ''}
+                    ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5 font-mono">Range: ${m.range}</div>` : ''}
+                    ${alarmesHtml}
+                    ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 Correlacionado: ${m.correlatedTag}</div>` : ''}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -562,22 +775,25 @@
                 wrapperElem.onclick = (e) => { e.stopPropagation(); carregarMarcadorForm(m.id); };
                 layer.appendChild(wrapperElem);
 
-                // Item na lista lateral
                 const listItem = document.createElement('div');
                 listItem.className = `p-2 rounded border text-xs cursor-pointer transition ${
                     isSelected ? 'bg-gray-800 border-blue-500 shadow' : 'bg-gray-800/40 border-gray-800 hover:border-gray-700'
                 }`;
+
+                let alarmesResumo = '';
+                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
+                    alarmesResumo = `<div class="flex flex-wrap gap-1 mt-1">` + 
+                        m.alarms.map(a => `<span class="text-[9px] px-1 rounded font-mono ${alarmBadges[a.tipo || a.level] || 'bg-gray-700'}">${a.tipo || a.level}: ${a.setpoint}</span>`).join('') +
+                        `</div>`;
+                }
+
                 listItem.innerHTML = `
                     <div class="flex justify-between items-center">
                         <span class="font-bold text-blue-400 font-mono">${m.tag}</span>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-mono ${colorClass}">${m.type}</span>
                     </div>
                     <div class="text-gray-400 truncate mt-0.5">${m.desc || 'Sem descrição'}</div>
-                    ${(m.alarmTable && m.alarmTable.length > 0) ? `
-                        <div class="flex flex-wrap gap-1 mt-1">
-                            ${m.alarmTable.map(a => `<span class="text-[9px] px-1 py-0.1 rounded font-mono ${alarmLevelColors[a.level] || alarmLevelColors.OTHER}">${a.level}: ${a.setpoint}</span>`).join('')}
-                        </div>
-                    ` : ''}
+                    ${alarmesResumo}
                 `;
                 listItem.onclick = () => carregarMarcadorForm(m.id);
                 list.appendChild(listItem);
@@ -586,10 +802,10 @@
             if (visibleCount === 0 && filterText) {
                 list.innerHTML = `<div class="text-xs text-gray-500 text-center py-4">Nenhum marcador encontrado.</div>`;
             }
-        }
+        };
 
         function carregarMarcadorForm(id) {
-            const m = markers.find(item => item.id === id);
+            const m = window.markers.find(item => item.id === id);
             if (!m) return;
 
             selectedMarkerId = m.id;
@@ -603,32 +819,20 @@
             document.getElementById('inputComments').value = m.comments || '';
             document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
 
-            // Carregar tabela de alarmes
-            document.getElementById('alarmsContainer').innerHTML = '';
-            if (m.alarmTable && m.alarmTable.length > 0) {
-                m.alarmTable.forEach(a => adicionarLinhaAlarme(a));
-            }
-
+            preencherTabelaAlarmes(m.alarms);
             renderMarkers();
         }
 
-        function excluirMarcador() {
+        async function excluirMarcador() {
             const id = document.getElementById('markerId').value;
             if (!id) return alert('Selecione um marcador para excluir.');
 
-            if (!confirm('Deseja realmente excluir este marcador?')) return;
+            if (!confirm('Deseja realmente excluir este marcador para todos os usuários?')) return;
 
-            markers = markers.filter(m => m.id !== id);
-            const tagExcluida = document.getElementById('inputTag').value.trim();
-            markers.forEach(m => {
-                if (m.correlatedTag && m.correlatedTag.toUpperCase() === tagExcluida.toUpperCase()) {
-                    m.correlatedTag = '';
-                }
-            });
-
-            localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
+            if (window.excluirMarcadorNuvem) {
+                await window.excluirMarcadorNuvem(id);
+            }
             limparFormulario();
-            renderMarkers();
         }
 
         function limparFormulario() {
@@ -646,12 +850,11 @@
             document.getElementById('inputRange').value = '';
             document.getElementById('inputComments').value = '';
             document.getElementById('inputCorrelatedTag').value = '';
-            document.getElementById('alarmsContainer').innerHTML = '';
+            preencherTabelaAlarmes([]);
         }
 
-        // Exportar e Importar JSON
         function exportarJson() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(markers, null, 2));
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.markers, null, 2));
             const dlAnchor = document.createElement('a');
             dlAnchor.setAttribute("href", dataStr);
             dlAnchor.setAttribute("download", `pid_markers_backup_${new Date().toISOString().slice(0,10)}.json`);
@@ -664,14 +867,14 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
-                        markers = imported;
-                        localStorage.setItem('pid_inspector_markers_v5', JSON.stringify(markers));
-                        renderMarkers();
-                        alert('Backup importado com sucesso!');
+                        if (window.importarMarcadoresNuvemBatch) {
+                            await window.importarMarcadoresNuvemBatch(imported);
+                        }
+                        alert('Backup de instrumentos sincronizado na nuvem com sucesso!');
                     } else {
                         alert('Arquivo JSON inválido.');
                     }
@@ -682,30 +885,33 @@
             reader.readAsText(file);
         }
 
-        // Exportar Relatório CSV detalhado por alarme
         function exportarCsv() {
-            if (markers.length === 0) return alert('Não há marcadores para exportar.');
-            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertrava;TAG_Correlacionada;Comentarios\n';
-            markers.forEach(m => {
-                if (m.alarmTable && m.alarmTable.length > 0) {
-                    m.alarmTable.forEach(a => {
-                        csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","${a.level}","${(a.setpoint || '').replace(/"/g, '""')}","${(a.action || '').replace(/"/g, '""')}","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
+            if (!window.markers || window.markers.length === 0) return alert('Não há instrumentos cadastrados para exportar.');
+            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertravamento;TAG_Correlacionada;Comentarios\n';
+            
+            window.markers.forEach(m => {
+                const baseInfo = `"${m.id}";"${m.page}";"${m.tag}";"${m.type || 'GEN'}";"${(m.desc || '').replace(/"/g, '""')}";"${(m.range || '').replace(/"/g, '""')}"`;
+                const tailInfo = `"${m.correlatedTag || ''}";"${(m.comments || '').replace(/"/g, '""')}"`;
+
+                if (Array.isArray(m.alarms) && m.alarms.length > 0) {
+                    m.alarms.forEach(a => {
+                        csv += `${baseInfo};"${a.tipo || a.level}";"${a.setpoint}";"${(a.acao || a.action || '').replace(/"/g, '""')}";${tailInfo}\n`;
                     });
                 } else {
-                    csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","N/A","N/A","N/A","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
+                    csv += `${baseInfo};"";"";"";${tailInfo}\n`;
                 }
             });
+
             const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const dlAnchor = document.createElement('a');
             dlAnchor.setAttribute("href", url);
-            dlAnchor.setAttribute("download", `relatorio_alarmes_pid_${new Date().toISOString().slice(0,10)}.csv`);
+            dlAnchor.setAttribute("download", `matriz_alarmes_pid_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(dlAnchor);
             dlAnchor.click();
             dlAnchor.remove();
         }
 
-        // ABAS PRINCIPAIS
         function alternarTelaPrincipal(tela) {
             const screenPid = document.getElementById('screenPid');
             const screenDefs = document.getElementById('screenDefs');
@@ -720,8 +926,8 @@
                 screenDefs.classList.remove('flex');
                 pidControls.classList.remove('hidden');
 
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5";
             } else {
                 screenDefs.classList.remove('hidden');
                 screenDefs.classList.add('flex');
@@ -729,26 +935,20 @@
                 screenPid.classList.remove('flex');
                 pidControls.classList.add('hidden');
 
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+                btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow flex items-center gap-1.5";
+                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition flex items-center gap-1.5";
             }
         }
 
-        // GERENCIAR DEFINIÇÕES GERAIS
         let defsTimer = null;
-        function salvarDefinicoesGerais() {
-            const text = document.getElementById('generalDefinitions').value;
-            localStorage.setItem('pid_inspector_general_defs', text);
-
-            const alertElem = document.getElementById('defsSavedAlert');
-            alertElem.style.opacity = '1';
+        function agendarSalvamentoDefinicoesGerais() {
             clearTimeout(defsTimer);
-            defsTimer = setTimeout(() => { alertElem.style.opacity = '0'; }, 2000);
-        }
-
-        function carregarDefinicoesGerais() {
-            const saved = localStorage.getItem('pid_inspector_general_defs') || '';
-            document.getElementById('generalDefinitions').value = saved;
+            defsTimer = setTimeout(() => {
+                const text = document.getElementById('generalDefinitions').value;
+                if (window.salvarDefinicoesGeraisNuvem) {
+                    window.salvarDefinicoesGeraisNuvem(text);
+                }
+            }, 800);
         }
 
         init();
