@@ -127,6 +127,12 @@
                     </div>
                 </div>
 
+                <div>
+                    <label class="block font-semibold text-gray-400 mb-0.5">Instrumento Linkado (múltiplas TAGs):</label>
+                    <input type="text" id="inputLinkedInstruments" placeholder="Ex: TAG01, TAG02" 
+                           class="w-full bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-white uppercase focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+
                 <!-- TABELA DE ALARMES -->
                 <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800 space-y-2">
                     <div class="flex justify-between items-center border-b border-gray-800 pb-1.5">
@@ -281,6 +287,7 @@
                     range: m.range,
                     comments: m.comments,
                     correlatedTag: m.correlated_tag,
+                    linkedInstruments: m.linked_instruments || '',
                     alarmTable: m.alarm_table || []
                 }));
                 renderMarkers();
@@ -321,6 +328,7 @@
             const range = document.getElementById('inputRange').value.trim();
             const comments = document.getElementById('inputComments').value.trim();
             const correlatedTag = document.getElementById('inputCorrelatedTag').value.trim().toUpperCase();
+            const linkedInstruments = document.getElementById('inputLinkedInstruments').value.trim().toUpperCase();
             const alarmTable = obterAlarmesFormulario();
 
             let markerCoords = pendingCoords;
@@ -344,6 +352,7 @@
                 range: range,
                 comments: comments,
                 correlated_tag: correlatedTag,
+                linked_instruments: linkedInstruments,
                 alarm_table: alarmTable,
                 updated_at: new Date().toISOString()
             };
@@ -537,7 +546,9 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
+            // Desenhar linhas de correlação e links múltiplos
             pageMarkers.forEach(m => {
+                // Linha de TAG Correlacionada única antiga
                 if (m.correlatedTag) {
                     const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
                     if (target) {
@@ -551,6 +562,25 @@
                         line.setAttribute('stroke-dasharray', '5');
                         svgSvg.appendChild(line);
                     }
+                }
+
+                // Linhas de Instrumentos Linkados (múltiplas TAGs separadas por vírgula, ponto e vírgula ou espaço)
+                if (m.linkedInstruments) {
+                    const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
+                    linkedTags.forEach(linkedTag => {
+                        const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
+                        if (target) {
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', `${m.x * 100}%`);
+                            line.setAttribute('y1', `${m.y * 100}%`);
+                            line.setAttribute('x2', `${target.x * 100}%`);
+                            line.setAttribute('y2', `${target.y * 100}%`);
+                            line.setAttribute('stroke', '#60a5fa');
+                            line.setAttribute('stroke-width', '2');
+                            line.setAttribute('stroke-dasharray', '4,4');
+                            svgSvg.appendChild(line);
+                        }
+                    });
                 }
             });
 
@@ -610,6 +640,7 @@
                     ${m.range ? `<div class="text-gray-400 text-[11px] mt-0.5">Range: ${m.range}</div>` : ''}
                     ${alarmsHtml}
                     ${m.correlatedTag ? `<div class="text-yellow-300 text-[10px] mt-1 font-mono">🔗 ${m.correlatedTag}</div>` : ''}
+                    ${m.linkedInstruments ? `<div class="text-blue-300 text-[10px] mt-1 font-mono">🔗 Linkados: ${m.linkedInstruments}</div>` : ''}
                 `;
 
                 wrapperElem.appendChild(dot);
@@ -656,6 +687,7 @@
             document.getElementById('inputRange').value = m.range || '';
             document.getElementById('inputComments').value = m.comments || '';
             document.getElementById('inputCorrelatedTag').value = m.correlatedTag || '';
+            document.getElementById('inputLinkedInstruments').value = m.linkedInstruments || '';
 
             document.getElementById('alarmsContainer').innerHTML = '';
             if (m.alarmTable && m.alarmTable.length > 0) {
@@ -680,6 +712,7 @@
             document.getElementById('inputRange').value = '';
             document.getElementById('inputComments').value = '';
             document.getElementById('inputCorrelatedTag').value = '';
+            document.getElementById('inputLinkedInstruments').value = '';
             document.getElementById('alarmsContainer').innerHTML = '';
         }
 
@@ -713,6 +746,7 @@
                                 range: item.range,
                                 comments: item.comments,
                                 correlated_tag: item.correlatedTag,
+                                linked_instruments: item.linkedInstruments || '',
                                 alarm_table: item.alarmTable || []
                             });
                         }
@@ -728,14 +762,14 @@
 
         function exportarCsv() {
             if (markers.length === 0) return alert('Não há marcadores para exportar.');
-            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertrava;TAG_Correlacionada;Comentarios\n';
+            let csv = 'ID;Pagina;TAG;Tipo;Descricao;Range;Nivel_Alarme;Setpoint;Acao_Intertrava;TAG_Correlacionada;Instrumentos_Linkados;Comentarios\n';
             markers.forEach(m => {
                 if (m.alarmTable && m.alarmTable.length > 0) {
                     m.alarmTable.forEach(a => {
-                        csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","${a.level}","${(a.setpoint || '').replace(/"/g, '""')}","${(a.action || '').replace(/"/g, '""')}","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
+                        csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","${a.level}","${(a.setpoint || '').replace(/"/g, '""')}","${(a.action || '').replace(/"/g, '""')}","${m.correlatedTag || ''}","${m.linkedInstruments || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
                     });
                 } else {
-                    csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","N/A","N/A","N/A","${m.correlatedTag || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
+                    csv += `"${m.id}","${m.page}","${m.tag}","${m.type || 'GEN'}","${(m.desc || '').replace(/"/g, '""')}","${(m.range || '').replace(/"/g, '""')}","N/A","N/A","N/A","${m.correlatedTag || ''}","${m.linkedInstruments || ''}","${(m.comments || '').replace(/"/g, '""')}"\n`;
                 }
             });
             const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
