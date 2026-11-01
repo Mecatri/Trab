@@ -546,41 +546,55 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Desenhar linhas apenas se o instrumento selecionado possuir links informados
+            // Exibir as linhas de conexão se um instrumento estiver selecionado
             if (selectedMarkerId) {
-                const m = pageMarkers.find(item => item.id === selectedMarkerId);
-                // Só desenha se o instrumento selecionado existir e tiver links preenchidos
-                if (m && m.linkedInstruments && m.linkedInstruments.trim() !== '') {
-                    // Linha de TAG Correlacionada única antiga (se houver)
-                    if (m.correlatedTag) {
-                        const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
-                        if (target) {
-                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            line.setAttribute('x1', `${m.x * 100}%`);
-                            line.setAttribute('y1', `${m.y * 100}%`);
-                            line.setAttribute('x2', `${target.x * 100}%`);
-                            line.setAttribute('y2', `${target.y * 100}%`);
-                            line.setAttribute('stroke', '#fde047');
-                            line.setAttribute('stroke-width', '2');
-                            line.setAttribute('stroke-dasharray', '5');
-                            svgSvg.appendChild(line);
-                        }
-                    }
+                const selectedMarker = pageMarkers.find(item => item.id === selectedMarkerId);
+                
+                if (selectedMarker) {
+                    const selectedTag = selectedMarker.tag.toUpperCase();
 
-                    // Linhas de Instrumentos Linkados (múltiplas TAGs) do marcador selecionado
-                    const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
-                    linkedTags.forEach(linkedTag => {
-                        const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
-                        if (target) {
-                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            line.setAttribute('x1', `${m.x * 100}%`);
-                            line.setAttribute('y1', `${m.y * 100}%`);
-                            line.setAttribute('x2', `${target.x * 100}%`);
-                            line.setAttribute('y2', `${target.y * 100}%`);
-                            line.setAttribute('stroke', '#60a5fa');
-                            line.setAttribute('stroke-width', '2');
-                            line.setAttribute('stroke-dasharray', '4,4');
-                            svgSvg.appendChild(line);
+                    pageMarkers.forEach(m => {
+                        const mTag = m.tag.toUpperCase();
+                        const linkedTags = m.linkedInstruments ? m.linkedInstruments.split(/[\s,;]+/).map(t => t.toUpperCase()).filter(t => t.length > 0) : [];
+                        const correlatedTag = m.correlatedTag ? m.correlatedTag.toUpperCase() : null;
+
+                        // Verifica se o item 'm' deve renderizar conexões porque ele é o próprio selecionado OU porque ele está ligado ao selecionado
+                        const isOrigin = (m.id === selectedMarkerId);
+                        const isLinkedTarget = linkedTags.includes(selectedTag);
+                        const isCorrelatedTarget = (correlatedTag === selectedTag);
+
+                        if (isOrigin || isLinkedTarget || isCorrelatedTarget) {
+                            // Desenha linhas para TAG Correlacionada antiga (se houver)
+                            if (correlatedTag) {
+                                const target = pageMarkers.find(t => t.tag.toUpperCase() === correlatedTag);
+                                if (target) {
+                                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                    line.setAttribute('x1', `${m.x * 100}%`);
+                                    line.setAttribute('y1', `${m.y * 100}%`);
+                                    line.setAttribute('x2', `${target.x * 100}%`);
+                                    line.setAttribute('y2', `${target.y * 100}%`);
+                                    line.setAttribute('stroke', '#fde047');
+                                    line.setAttribute('stroke-width', '2');
+                                    line.setAttribute('stroke-dasharray', '5');
+                                    svgSvg.appendChild(line);
+                                }
+                            }
+
+                            // Desenha linhas para múltiplos Instrumentos Linkados
+                            linkedTags.forEach(linkedTag => {
+                                const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag);
+                                if (target) {
+                                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                    line.setAttribute('x1', `${m.x * 100}%`);
+                                    line.setAttribute('y1', `${m.y * 100}%`);
+                                    line.setAttribute('x2', `${target.x * 100}%`);
+                                    line.setAttribute('y2', `${target.y * 100}%`);
+                                    line.setAttribute('stroke', '#60a5fa');
+                                    line.setAttribute('stroke-width', '2');
+                                    line.setAttribute('stroke-dasharray', '4,4');
+                                    svgSvg.appendChild(line);
+                                }
+                            });
                         }
                     });
                 }
