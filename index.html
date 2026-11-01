@@ -203,59 +203,35 @@
                   class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
-    <!-- TELA 3: FUNÇÕES (Calculadora de Interpolação Linear) -->
+    <!-- TELA 3: FUNÇÕES (Calculadora de Interpolação Linear Dinâmica) -->
     <div id="screenFuncs" class="hidden flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full overflow-y-auto">
-        <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b border-gray-800 pb-3 gap-3">
             <div>
                 <h2 class="text-lg font-bold text-blue-400">Funções e Cálculos de Engenharia</h2>
-                <p class="text-xs text-gray-400">Mapeamento e Interpolação Linear de Tabelas (Tag: 11-5051-PI-2019)</p>
+                <p class="text-xs text-gray-400">Selecione a função desejada para visualizar a tabela e realizar o cálculo automático.</p>
+            </div>
+            <!-- SELETOR DE FUNÇÕES -->
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <label class="text-xs font-semibold text-gray-300 whitespace-nowrap">Função:</label>
+                <select id="selectFunctionKey" onchange="mudarFuncaoAtiva()" class="bg-gray-900 border border-gray-700 text-blue-400 font-bold text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 w-full md:w-64">
+                </select>
             </div>
         </div>
 
-        <!-- CARD DA TABELA -->
+        <!-- CARD DA TABELA DA FUNÇÃO SELECIONADA -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6 shadow-xl">
-            <h3 class="text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
-                <span>📊</span> Tabela de Calibração / Conversão (11-5051-PI-2019)
-            </h3>
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="funcTitleDisplay" class="text-sm font-bold text-gray-200 flex items-center gap-2">
+                    <span>📊</span> Tabela de Calibração
+                </h3>
+                <span id="funcTagDisplay" class="text-xs bg-blue-950 text-blue-300 border border-blue-800/60 px-2.5 py-0.5 rounded font-mono">--</span>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                     <thead>
-                        <tr class="bg-gray-800 text-gray-300 font-mono">
-                            <th class="p-2.5 border border-gray-700">Variável</th>
-                            <th class="p-2.5 border border-gray-700 text-center">&lt; 34,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">34,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">47,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">61,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">72,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">83,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">&gt; 83,00</th>
-                            <th class="p-2.5 border border-gray-700 text-center">Unidade</th>
-                        </tr>
+                        <tr id="tableHeadRow" class="bg-gray-800 text-gray-300 font-mono"></tr>
                     </thead>
-                    <tbody class="text-gray-300 font-mono">
-                        <tr>
-                            <td class="p-2.5 border border-gray-800 font-bold text-blue-400">X (Entrada)</td>
-                            <td class="p-2.5 border border-gray-800 text-center">&lt; 34,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">34,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">47,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">61,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">72,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">83,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">&gt; 83,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center text-gray-400">bar</td>
-                        </tr>
-                        <tr class="bg-gray-950/50">
-                            <td class="p-2.5 border border-gray-800 font-bold text-emerald-400">Y (W at)</td>
-                            <td class="p-2.5 border border-gray-800 text-center">460,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">460,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">470,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">480,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">487,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">495,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center">495,00</td>
-                            <td class="p-2.5 border border-gray-800 text-center text-gray-400">°C</td>
-                        </tr>
-                    </tbody>
+                    <tbody id="tableBodyRows" class="text-gray-300 font-mono"></tbody>
                 </table>
             </div>
         </div>
@@ -273,8 +249,8 @@
                     </div>
                     <div class="space-y-1.5 text-xs text-gray-300">
                         <p class="font-semibold text-gray-400 mb-1">Legenda:</p>
-                        <p>• <code class="text-blue-400 font-mono">Out</code>: Saída calculada ($^\circ\text{C}$)</p>
-                        <p>• <code class="text-blue-400 font-mono">I_N</code>: Valor de Entrada ($I_N$ em bar)</p>
+                        <p>• <code class="text-blue-400 font-mono">Out</code>: Saída calculada (Unidade Y)</p>
+                        <p>• <code class="text-blue-400 font-mono">I_N</code>: Valor de Entrada (Unidade X)</p>
                         <p>• <code class="text-blue-400 font-mono">X_N, Y_N</code>: Ponto inicial da faixa atual</p>
                         <p>• <code class="text-blue-400 font-mono">X_{N+1}, Y_{N+1}</code>: Ponto final da faixa à frente</p>
                     </div>
@@ -289,15 +265,15 @@
                     </h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-400 mb-1">Valor de Entrada ($I_N$ em bar):</label>
-                            <input type="number" id="inputBarValue" step="any" placeholder="Ex: 42.0" 
+                            <label id="inputLabelText" class="block text-xs font-semibold text-gray-400 mb-1">Valor de Entrada ($I_N$):</label>
+                            <input type="number" id="inputBarValue" step="any" placeholder="Digite o valor..." 
                                    oninput="calcularInterpolacao()"
                                    class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 font-mono">
                         </div>
 
                         <div class="bg-gray-950 border border-gray-800 rounded-lg p-4">
-                            <div class="text-xs text-gray-400 mb-1">Resultado da Saída (Out):</div>
-                            <div id="calcResultDisplay" class="text-2xl font-bold text-emerald-400 font-mono">-- °C</div>
+                            <div class="text-xs text-gray-400 mb-1">Resultado da Saída (<span id="outputUnitLabel">Out</span>):</div>
+                            <div id="calcResultDisplay" class="text-2xl font-bold text-emerald-400 font-mono">--</div>
                             <div id="calcStepsDisplay" class="text-[11px] text-gray-400 mt-2 leading-relaxed font-mono"></div>
                         </div>
                     </div>
@@ -326,7 +302,6 @@
         let startY = 0;
 
         let draggingMarkerId = null;
-
         let markers = [];
         let generalDefs = "";
         let selectedMarkerId = null;
@@ -336,6 +311,150 @@
         const ctx = canvas.getContext('2d');
         const wrapper = document.getElementById('canvasWrapper');
         const container = document.getElementById('viewerContainer');
+
+        // REPOSITÓRIO COMPLETO DE FUNÇÕES EXTRAÍDAS DOS DOCUMENTOS
+        const functionsData = {
+            "f6": {
+                name: "f6",
+                tag: "11-5051-PI-2019",
+                xUnit: "bar",
+                yUnit: "°C",
+                xValues: [-Infinity, 34.0, 47.0, 61.0, 72.0, 83.0, Infinity],
+                yValues: [460.0, 460.0, 470.0, 480.0, 487.0, 495.0, 495.0],
+                rawLabelsX: ["< 34,00", "34,00", "47,00", "61,00", "72,00", "83,00", "> 83,00"],
+                rawLabelsY: ["460,00", "460,00", "470,00", "480,00", "487,00", "495,00", "495,00"]
+            },
+            "f1a": {
+                name: "f1a",
+                tag: "11-5051-TI-2006",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 0.0, 461.0, Infinity],
+                yValues: [100.0, 100.0, 481.0, 481.0],
+                rawLabelsX: ["< 0,00", "0,00", "461,00", "> 461,00"],
+                rawLabelsY: ["100,00", "100,00", "481,00", "481,00"]
+            },
+            "f5.1": {
+                name: "f5.1",
+                tag: "11-5051-TI-2022 (MIN 89 bar)",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 356.0, 402.0, Infinity],
+                yValues: [470.0, 470.0, 496.0, 496.0],
+                rawLabelsX: ["< 356,00", "356,00", "402,00", "> 402,00"],
+                rawLabelsY: ["470,00", "470,00", "496,00", "496,00"]
+            },
+            "f5.2": {
+                name: "f5.2",
+                tag: "11-5051-TI-2022 (MAX 101 bar)",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 347.0, 394.0, Infinity],
+                yValues: [470.0, 470.0, 496.0, 496.0],
+                rawLabelsX: ["< 347,00", "347,00", "394,00", "> 394,00"],
+                rawLabelsY: ["470,00", "470,00", "496,00", "496,00"]
+            },
+            "f4": {
+                name: "f4",
+                tag: "fpsat[11-5051-PI-2005]",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 100.0, 380.0, Infinity],
+                yValues: [150.0, 150.0, 430.0, 430.0],
+                rawLabelsX: ["< 100,00", "100,00", "380,00", "> 380,00"],
+                rawLabelsY: ["150,00", "150,00", "430,00", "430,00"]
+            },
+            "f4a": {
+                name: "f4a",
+                tag: "fpsat[11-5051-PI-2002]",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 100.0, 380.0, Infinity],
+                yValues: [150.0, 150.0, 430.0, 430.0],
+                rawLabelsX: ["< 100,00", "100,00", "380,00", "> 380,00"],
+                rawLabelsY: ["150,00", "150,00", "430,00", "430,00"]
+            },
+            "f2": {
+                name: "f2",
+                tag: "11-5051-TI-2006",
+                xUnit: "°C",
+                yUnit: "bar",
+                xValues: [-Infinity, 40.0, 80.0, 120.0, 160.0, 200.0, Infinity],
+                yValues: [10.66, 10.66, 23.72, 45.94, 80.95, 121.4, 121.4],
+                rawLabelsX: ["< 40,00", "40,00", "80,00", "120,00", "160,00", "200,00", "> 200,00"],
+                rawLabelsY: ["10,66", "10,66", "23,72", "45,94", "80,95", "121,40", "121,40"]
+            },
+            "f1": {
+                name: "f1",
+                tag: "11-5051-TI-2006",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 436.0, 461.0, Infinity],
+                yValues: [470.0, 470.0, 496.0, 496.0],
+                rawLabelsX: ["< 436,00", "436,00", "461,00", "> 461,00"],
+                rawLabelsY: ["470,00", "470,00", "496,00", "496,00"]
+            },
+            "f61": {
+                name: "f61",
+                tag: "11-5051-PI-2029",
+                xUnit: "bar",
+                yUnit: "bar",
+                xValues: [-Infinity, -0.56, 0.16, Infinity],
+                yValues: [-0.82, -0.82, -0.6, -0.6],
+                rawLabelsX: ["< -0,56", "-0,56", "0,16", "> 0,16"],
+                rawLabelsY: ["-0,82", "-0,82", "-0,60", "-0,60"]
+            },
+            "f60": {
+                name: "f60",
+                tag: "11-5051-PI-2029",
+                xUnit: "bar",
+                yUnit: "bar",
+                xValues: [-Infinity, -0.56, -0.05, Infinity],
+                yValues: [-0.85, -0.85, -0.7, -0.7],
+                rawLabelsX: ["< -0,56", "-0,56", "-0,05", "> -0,05"],
+                rawLabelsY: ["-0,85", "-0,85", "-0,70", "-0,70"]
+            },
+            "f40": {
+                name: "f40",
+                tag: "11-5051-TI-2022",
+                xUnit: "°C",
+                yUnit: "°C",
+                xValues: [-Infinity, 200.0, 400.0, Infinity],
+                yValues: [370.0, 370.0, 480.0, 480.0],
+                rawLabelsX: ["< 200,00", "200,00", "400,00", "> 400,00"],
+                rawLabelsY: ["370,00", "370,00", "480,00", "480,00"]
+            },
+            "f12": {
+                name: "f12",
+                tag: "11-5051-PI-2029",
+                xUnit: "bar",
+                yUnit: "bar",
+                xValues: [-Infinity, -1.0, -0.5, 0.25, 0.8, 1.6, Infinity],
+                yValues: [-0.1, -0.1, 0.55, 1.37, 1.94, 2.7, 2.7],
+                rawLabelsX: ["< -1,00", "-1,00", "-0,50", "0,25", "0,80", "1,60", "> 1,60"],
+                rawLabelsY: ["-0,10", "-0,10", "0,55", "1,37", "1,94", "2,70", "2,70"]
+            },
+            "f11": {
+                name: "f11",
+                tag: "11-5051-PI-2021",
+                xUnit: "bar",
+                yUnit: "bar",
+                xValues: [-Infinity, -1.0, 2.5, 11.4, 22.4, 33.7, 57.0, Infinity],
+                yValues: [-0.1, -0.1, 0.7, 2.2, 4.1, 5.6, 8.9, 8.9],
+                rawLabelsX: ["< -1,00", "-1,00", "2,50", "11,40", "22,40", "33,70", "57,00", "> 57,00"],
+                rawLabelsY: ["-0,10", "-0,10", "0,70", "2,20", "4,10", "5,60", "8,90", "8,90"]
+            },
+            "f10": {
+                name: "f10",
+                tag: "11-5051-PI-2040",
+                xUnit: "bar",
+                yUnit: "bar",
+                xValues: [-Infinity, -0.2, 0.45, 1.1, 1.9, 2.9, Infinity],
+                yValues: [11.8, 11.8, 21.7, 31.6, 44.2, 53.1, 53.1],
+                rawLabelsX: ["< -0,20", "-0,20", "0,45", "1,10", "1,90", "2,90", "> 2,90"],
+                rawLabelsY: ["11,80", "11,80", "21,70", "31,60", "44,20", "53,10", "53,10"]
+            }
+        };
 
         const typeColors = {
             PT: 'bg-amber-600 text-white',
@@ -357,10 +476,12 @@
 
         async function init() {
             try {
-                // Renderizar fórmula com KaTeX
                 katex.render("Out = Y_N + (I_N - X_N) \\cdot \\left(\\frac{Y_{N+1} - Y_N}{X_{N+1} - X_N}\\right)", document.getElementById('formulaMath'), {
                     throwOnError: false
                 });
+
+                popularSeletorFuncoes();
+                mudarFuncaoAtiva();
 
                 await carregarPdf(pdfUrl);
                 await carregarDadosSupabase();
@@ -368,6 +489,105 @@
             } catch (err) {
                 console.error("Erro na inicialização com Supabase:", err);
             }
+        }
+
+        function popularSeletorFuncoes() {
+            const select = document.getElementById('selectFunctionKey');
+            select.innerHTML = '';
+            for (const key in functionsData) {
+                const item = functionsData[key];
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = `${item.name.toUpperCase()} — Tag: ${item.tag}`;
+                select.appendChild(opt);
+            }
+        }
+
+        function mudarFuncaoAtiva() {
+            const key = document.getElementById('selectFunctionKey').value;
+            const func = functionsData[key];
+            if (!func) return;
+
+            document.getElementById('funcTitleDisplay').innerHTML = `<span>📊</span> Tabela de Calibração / Conversão (${func.name.toUpperCase()})`;
+            document.getElementById('funcTagDisplay').textContent = func.tag;
+            document.getElementById('inputLabelText').innerHTML = `Valor de Entrada ($I_N$ em ${func.xUnit}):`;
+            document.getElementById('outputUnitLabel').textContent = func.yUnit;
+
+            // Montar Tabela HTML
+            const headRow = document.getElementById('tableHeadRow');
+            const bodyRows = document.getElementById('tableBodyRows');
+            
+            headRow.innerHTML = `<th class="p-2.5 border border-gray-700">Variável</th>`;
+            func.rawLabelsX.forEach(lbl => {
+                headRow.innerHTML += `<th class="p-2.5 border border-gray-700 text-center">${lbl}</th>`;
+            });
+            headRow.innerHTML += `<th class="p-2.5 border border-gray-700 text-center">Unidade</th>`;
+
+            bodyRows.innerHTML = `
+                <tr>
+                    <td class="p-2.5 border border-gray-800 font-bold text-blue-400">X (Entrada)</td>
+                    ${func.rawLabelsX.map(l => `<td class="p-2.5 border border-gray-800 text-center">${l}</td>`).join('')}
+                    <td class="p-2.5 border border-gray-800 text-center text-gray-400">${func.xUnit}</td>
+                </tr>
+                <tr class="bg-gray-950/50">
+                    <td class="p-2.5 border border-gray-800 font-bold text-emerald-400">Y (Saída)</td>
+                    ${func.rawLabelsY.map(l => `<td class="p-2.5 border border-gray-800 text-center">${l}</td>`).join('')}
+                    <td class="p-2.5 border border-gray-800 text-center text-gray-400">${func.yUnit}</td>
+                </tr>
+            `;
+
+            document.getElementById('inputBarValue').value = '';
+            document.getElementById('calcResultDisplay').textContent = `-- ${func.yUnit}`;
+            document.getElementById('calcStepsDisplay').textContent = 'Aguardando valor de entrada...';
+        }
+
+        function calcularInterpolacao() {
+            const key = document.getElementById('selectFunctionKey').value;
+            const func = functionsData[key];
+            const valInput = parseFloat(document.getElementById('inputBarValue').value);
+            const resDisplay = document.getElementById('calcResultDisplay');
+            const stepsDisplay = document.getElementById('calcStepsDisplay');
+
+            if (isNaN(valInput)) {
+                resDisplay.textContent = `-- ${func.yUnit}`;
+                stepsDisplay.textContent = "Digite um valor de entrada válido.";
+                return;
+            }
+
+            const xPoints = func.xValues;
+            const yPoints = func.yValues;
+
+            let index = 0;
+            for (let i = 0; i < xPoints.length - 1; i++) {
+                if (valInput >= xPoints[i] && valInput <= xPoints[i+1]) {
+                    index = i;
+                    break;
+                }
+            }
+
+            const X_N = xPoints[index];
+            const Y_N = yPoints[index];
+            const X_N1 = xPoints[index+1];
+            const Y_N1 = yPoints[index+1];
+
+            let out = 0;
+            if (X_N === -Infinity) {
+                out = yPoints[1];
+                resDisplay.textContent = `${out.toFixed(2)} ${func.yUnit}`;
+                stepsDisplay.textContent = `Entrada abaixo do limite mínimo. Valor fixado em Y = ${out.toFixed(2)} ${func.yUnit}.`;
+                return;
+            } else if (X_N1 === Infinity) {
+                out = yPoints[yPoints.length - 2];
+                resDisplay.textContent = `${out.toFixed(2)} ${func.yUnit}`;
+                stepsDisplay.textContent = `Entrada acima do limite máximo. Valor fixado em Y = ${out.toFixed(2)} ${func.yUnit}.`;
+                return;
+            }
+
+            // Aplicação da fórmula de interpolação linear
+            out = Y_N + (valInput - X_N) * ((Y_N1 - Y_N) / (X_N1 - X_N));
+
+            resDisplay.textContent = `${out.toFixed(2)} ${func.yUnit}`;
+            stepsDisplay.textContent = `Intervalo: [${X_N} a ${X_N1}] ${func.xUnit} | X_N=${X_N}, Y_N=${Y_N}, X_N+1=${X_N1}, Y_N+1=${Y_N1}`;
         }
 
         function atualizarStatusSupabase(status, msg) {
@@ -963,55 +1183,6 @@
             document.body.appendChild(dlAnchor);
             dlAnchor.click();
             dlAnchor.remove();
-        }
-
-        // Função de cálculo automático da Interpolação Linear
-        function calcularInterpolacao() {
-            const valInput = parseFloat(document.getElementById('inputBarValue').value);
-            const resDisplay = document.getElementById('calcResultDisplay');
-            const stepsDisplay = document.getElementById('calcStepsDisplay');
-
-            if (isNaN(valInput)) {
-                resDisplay.textContent = "-- °C";
-                stepsDisplay.textContent = "Digite um valor de entrada válido.";
-                return;
-            }
-
-            // Tabela de pontos X (bar) e Y (°C) da tag 11-5051-PI-2019
-            const xPoints = [-Infinity, 34.0, 47.0, 61.0, 72.0, 83.0, Infinity];
-            const yPoints = [460.0, 460.0, 470.0, 480.0, 487.0, 495.0, 495.0];
-
-            let index = 0;
-            for (let i = 0; i < xPoints.length - 1; i++) {
-                if (valInput >= xPoints[i] && valInput <= xPoints[i+1]) {
-                    index = i;
-                    break;
-                }
-            }
-
-            const X_N = xPoints[index];
-            const Y_N = yPoints[index];
-            const X_N1 = xPoints[index+1];
-            const Y_N1 = yPoints[index+1];
-
-            let out = 0;
-            if (X_N === -Infinity) {
-                out = yPoints[1]; // Abaixo de 34
-                resDisplay.textContent = out.toFixed(2) + " °C";
-                stepsDisplay.textContent = `Entrada abaixo de 34,00 bar. Valor fixado em Y = ${out.toFixed(2)} °C.`;
-                return;
-            } else if (X_N1 === Infinity) {
-                out = yPoints[yPoints.length - 2]; // Acima de 83
-                resDisplay.textContent = `${out.toFixed(2)} °C`;
-                stepsDisplay.textContent = `Entrada acima de 83,00 bar. Valor fixado em Y = ${out.toFixed(2)} °C.`;
-                return;
-            }
-
-            // Aplicação da fórmula: Out = Y_N + (I_N - X_N) * ((Y_N1 - Y_N) / (X_N1 - X_N))
-            out = Y_N + (valInput - X_N) * ((Y_N1 - Y_N) / (X_N1 - X_N));
-
-            resDisplay.textContent = `${out.toFixed(2)} °C`;
-            stepsDisplay.textContent = `Intervalo: [${X_N} a ${X_N1}] bar | X_N=${X_N}, Y_N=${Y_N}, X_N+1=${X_N1}, Y_N+1=${Y_N1}`;
         }
 
         function alternarTelaPrincipal(tela) {
