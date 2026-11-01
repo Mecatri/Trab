@@ -13,6 +13,9 @@
     </script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- KaTeX para renderização de fórmulas matemáticas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <style>
         .marker-dot { transform: translate(-50%, -50%); }
         .marker-tooltip { display: none; }
@@ -44,6 +47,7 @@
             <div class="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
                 <button id="topTabPid" onclick="alternarTelaPrincipal('pid')" class="px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow">Visualizador P&ID</button>
                 <button id="topTabDefs" onclick="alternarTelaPrincipal('defs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Definições Gerais</button>
+                <button id="topTabFuncs" onclick="alternarTelaPrincipal('funcs')" class="px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition">Funções</button>
             </div>
         </div>
 
@@ -199,6 +203,109 @@
                   class="w-full flex-1 bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none leading-relaxed font-sans shadow-inner"></textarea>
     </div>
 
+    <!-- TELA 3: FUNÇÕES (Calculadora de Interpolação Linear) -->
+    <div id="screenFuncs" class="hidden flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full overflow-y-auto">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+            <div>
+                <h2 class="text-lg font-bold text-blue-400">Funções e Cálculos de Engenharia</h2>
+                <p class="text-xs text-gray-400">Mapeamento e Interpolação Linear de Tabelas (Tag: 11-5051-PI-2019)</p>
+            </div>
+        </div>
+
+        <!-- CARD DA TABELA -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6 shadow-xl">
+            <h3 class="text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
+                <span>📊</span> Tabela de Calibração / Conversão (11-5051-PI-2019)
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-gray-800 text-gray-300 font-mono">
+                            <th class="p-2.5 border border-gray-700">Variável</th>
+                            <th class="p-2.5 border border-gray-700 text-center">&lt; 34,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">34,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">47,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">61,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">72,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">83,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">&gt; 83,00</th>
+                            <th class="p-2.5 border border-gray-700 text-center">Unidade</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300 font-mono">
+                        <tr>
+                            <td class="p-2.5 border border-gray-800 font-bold text-blue-400">X (Entrada)</td>
+                            <td class="p-2.5 border border-gray-800 text-center">&lt; 34,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">34,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">47,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">61,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">72,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">83,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">&gt; 83,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center text-gray-400">bar</td>
+                        </tr>
+                        <tr class="bg-gray-950/50">
+                            <td class="p-2.5 border border-gray-800 font-bold text-emerald-400">Y (W at)</td>
+                            <td class="p-2.5 border border-gray-800 text-center">460,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">460,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">470,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">480,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">487,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">495,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center">495,00</td>
+                            <td class="p-2.5 border border-gray-800 text-center text-gray-400">°C</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- CARD DA FÓRMULA E CALCULADORA -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- FÓRMULA & LEGENDA -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
+                        <span>📐</span> Equação de Interpolação Linear
+                    </h3>
+                    <div class="bg-gray-950 p-4 rounded-lg border border-gray-800 text-center mb-4">
+                        <div id="formulaMath" class="text-blue-400 text-sm md:text-base overflow-x-auto py-2"></div>
+                    </div>
+                    <div class="space-y-1.5 text-xs text-gray-300">
+                        <p class="font-semibold text-gray-400 mb-1">Legenda:</p>
+                        <p>• <code class="text-blue-400 font-mono">Out</code>: Saída calculada ($^\circ\text{C}$)</p>
+                        <p>• <code class="text-blue-400 font-mono">I_N</code>: Valor de Entrada ($I_N$ em bar)</p>
+                        <p>• <code class="text-blue-400 font-mono">X_N, Y_N</code>: Ponto inicial da faixa atual</p>
+                        <p>• <code class="text-blue-400 font-mono">X_{N+1}, Y_{N+1}</code>: Ponto final da faixa à frente</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALCULADORA INTERATIVA -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
+                        <span>🧮</span> Calculadora Automática
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-1">Valor de Entrada ($I_N$ em bar):</label>
+                            <input type="number" id="inputBarValue" step="any" placeholder="Ex: 42.0" 
+                                   oninput="calcularInterpolacao()"
+                                   class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 font-mono">
+                        </div>
+
+                        <div class="bg-gray-950 border border-gray-800 rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">Resultado da Saída (Out):</div>
+                            <div id="calcResultDisplay" class="text-2xl font-bold text-emerald-400 font-mono">-- °C</div>
+                            <div id="calcStepsDisplay" class="text-[11px] text-gray-400 mt-2 leading-relaxed font-mono"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const pdfUrl = "https://dxjeguzxsitbrpzfzgju.supabase.co/storage/v1/object/public/fluxograma/Vapor%20geral%20TG-1.pdf";
 
@@ -218,7 +325,6 @@
         let startX = 0;
         let startY = 0;
 
-        // Variáveis para controle de arrastar o marcador
         let draggingMarkerId = null;
 
         let markers = [];
@@ -251,6 +357,11 @@
 
         async function init() {
             try {
+                // Renderizar fórmula com KaTeX
+                katex.render("Out = Y_N + (I_N - X_N) \\cdot \\left(\\frac{Y_{N+1} - Y_N}{X_{N+1} - X_N}\\right)", document.getElementById('formulaMath'), {
+                    throwOnError: false
+                });
+
                 await carregarPdf(pdfUrl);
                 await carregarDadosSupabase();
                 iniciarInscricaoTempoReal();
@@ -474,7 +585,6 @@
         });
 
         window.addEventListener('mousemove', function(e) {
-            // Se estiver arrastando um marcador para mudar de lugar
             if (draggingMarkerId) {
                 const rect = canvas.getBoundingClientRect();
                 const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / canvas.width));
@@ -600,7 +710,6 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Exibir as linhas de conexão se um instrumento estiver selecionado
             if (selectedMarkerId) {
                 const selectedMarker = pageMarkers.find(item => item.id === selectedMarkerId);
                 
@@ -678,7 +787,6 @@
                 wrapperElem.style.left = `${m.x * 100}%`;
                 wrapperElem.style.top = `${m.y * 100}%`;
 
-                // Evento para iniciar o arraste do marcador
                 wrapperElem.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     draggingMarkerId = m.id;
@@ -857,31 +965,88 @@
             dlAnchor.remove();
         }
 
+        // Função de cálculo automático da Interpolação Linear
+        function calcularInterpolacao() {
+            const valInput = parseFloat(document.getElementById('inputBarValue').value);
+            const resDisplay = document.getElementById('calcResultDisplay');
+            const stepsDisplay = document.getElementById('calcStepsDisplay');
+
+            if (isNaN(valInput)) {
+                resDisplay.textContent = "-- °C";
+                stepsDisplay.textContent = "Digite um valor de entrada válido.";
+                return;
+            }
+
+            // Tabela de pontos X (bar) e Y (°C) da tag 11-5051-PI-2019
+            const xPoints = [-Infinity, 34.0, 47.0, 61.0, 72.0, 83.0, Infinity];
+            const yPoints = [460.0, 460.0, 470.0, 480.0, 487.0, 495.0, 495.0];
+
+            let index = 0;
+            for (let i = 0; i < xPoints.length - 1; i++) {
+                if (valInput >= xPoints[i] && valInput <= xPoints[i+1]) {
+                    index = i;
+                    break;
+                }
+            }
+
+            const X_N = xPoints[index];
+            const Y_N = yPoints[index];
+            const X_N1 = xPoints[index+1];
+            const Y_N1 = yPoints[index+1];
+
+            let out = 0;
+            if (X_N === -Infinity) {
+                out = yPoints[1]; // Abaixo de 34
+                resDisplay.textContent = out.toFixed(2) + " °C";
+                stepsDisplay.textContent = `Entrada abaixo de 34,00 bar. Valor fixado em Y = ${out.toFixed(2)} °C.`;
+                return;
+            } else if (X_N1 === Infinity) {
+                out = yPoints[yPoints.length - 2]; // Acima de 83
+                resDisplay.textContent = `${out.toFixed(2)} °C`;
+                stepsDisplay.textContent = `Entrada acima de 83,00 bar. Valor fixado em Y = ${out.toFixed(2)} °C.`;
+                return;
+            }
+
+            // Aplicação da fórmula: Out = Y_N + (I_N - X_N) * ((Y_N1 - Y_N) / (X_N1 - X_N))
+            out = Y_N + (valInput - X_N) * ((Y_N1 - Y_N) / (X_N1 - X_N));
+
+            resDisplay.textContent = `${out.toFixed(2)} °C`;
+            stepsDisplay.textContent = `Intervalo: [${X_N} a ${X_N1}] bar | X_N=${X_N}, Y_N=${Y_N}, X_N+1=${X_N1}, Y_N+1=${Y_N1}`;
+        }
+
         function alternarTelaPrincipal(tela) {
             const screenPid = document.getElementById('screenPid');
             const screenDefs = document.getElementById('screenDefs');
+            const screenFuncs = document.getElementById('screenFuncs');
+            
             const btnPid = document.getElementById('topTabPid');
             const btnDefs = document.getElementById('topTabDefs');
+            const btnFuncs = document.getElementById('topTabFuncs');
             const pidControls = document.getElementById('pidControls').parentElement;
+
+            screenPid.classList.add('hidden'); screenPid.classList.remove('flex');
+            screenDefs.classList.add('hidden'); screenDefs.classList.remove('flex');
+            screenFuncs.classList.add('hidden'); screenFuncs.classList.remove('flex');
+
+            btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+            btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+            btnFuncs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
 
             if (tela === 'pid') {
                 screenPid.classList.remove('hidden');
                 screenPid.classList.add('flex');
-                screenDefs.classList.add('hidden');
-                screenDefs.classList.remove('flex');
                 pidControls.classList.remove('hidden');
-
                 btnPid.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
-                btnDefs.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
-            } else {
+            } else if (tela === 'defs') {
                 screenDefs.classList.remove('hidden');
                 screenDefs.classList.add('flex');
-                screenPid.classList.add('hidden');
-                screenPid.classList.remove('flex');
                 pidControls.classList.add('hidden');
-
                 btnDefs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
-                btnPid.className = "px-3 py-1 rounded text-xs font-bold text-gray-400 hover:text-white transition";
+            } else if (tela === 'funcs') {
+                screenFuncs.classList.remove('hidden');
+                screenFuncs.classList.add('flex');
+                pidControls.classList.add('hidden');
+                btnFuncs.className = "px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white transition shadow";
             }
         }
 
