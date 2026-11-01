@@ -12,7 +12,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
     <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .marker-dot { transform: translate(-50%, -50%); }
         .marker-tooltip { display: none; }
@@ -546,44 +546,69 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Desenhar linhas apenas para o marcador atualmente selecionado
+            // Verificar se o instrumento selecionado faz parte de alguma relação (origem ou destino de link)
             if (selectedMarkerId) {
-                const m = pageMarkers.find(item => item.id === selectedMarkerId);
-                if (m) {
-                    // Linha de TAG Correlacionada única antiga (se houver)
-                    if (m.correlatedTag) {
-                        const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
-                        if (target) {
-                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            line.setAttribute('x1', `${m.x * 100}%`);
-                            line.setAttribute('y1', `${m.y * 100}%`);
-                            line.setAttribute('x2', `${target.x * 100}%`);
-                            line.setAttribute('y2', `${target.y * 100}%`);
-                            line.setAttribute('stroke', '#fde047');
-                            line.setAttribute('stroke-width', '2');
-                            line.setAttribute('stroke-dasharray', '5');
-                            svgSvg.appendChild(line);
-                        }
-                    }
+                const selecionado = pageMarkers.find(item => item.id === selectedMarkerId);
+                if (selecionado) {
+                    const tagSelecionada = selecionado.tag.toUpperCase();
 
-                    // Linhas de Instrumentos Linkados (múltiplas TAGs) do marcador selecionado
-                    if (m.linkedInstruments) {
-                        const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
-                        linkedTags.forEach(linkedTag => {
-                            const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
-                            if (target) {
-                                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                                line.setAttribute('x1', `${m.x * 100}%`);
-                                line.setAttribute('y1', `${m.y * 100}%`);
-                                line.setAttribute('x2', `${target.x * 100}%`);
-                                line.setAttribute('y2', `${target.y * 100}%`);
-                                line.setAttribute('stroke', '#60a5fa');
-                                line.setAttribute('stroke-width', '2');
-                                line.setAttribute('stroke-dasharray', '4,4');
-                                svgSvg.appendChild(line);
+                    pageMarkers.forEach(m => {
+                        let deveMostrarLinha = false;
+
+                        // Condição 1: O marcador atual é o que possui links cadastrados e o selecionado é um dos alvos dele
+                        if (m.linkedInstruments) {
+                            const linksDoM = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
+                            if (m.id === selectedMarkerId || linksDoM.includes(tagSelecionada)) {
+                                deveMostrarLinha = true;
                             }
-                        });
-                    }
+                        }
+
+                        // Condição 2: Compatibilidade com TAG Correlacionada única antiga
+                        if (m.correlatedTag) {
+                            if (m.id === selectedMarkerId || m.correlatedTag.toUpperCase() === tagSelecionada) {
+                                const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
+                                if (target && (m.id === selectedMarkerId || target.id === selectedMarkerId)) {
+                                    deveMostrarLinha = true;
+                                }
+                            }
+                        }
+
+                        // Se atende à condição, desenha as linhas correspondentes a este item m
+                        if (deveMostrarLinha) {
+                            if (m.correlatedTag) {
+                                const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
+                                if (target) {
+                                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                    line.setAttribute('x1', `${m.x * 100}%`);
+                                    line.setAttribute('y1', `${m.y * 100}%`);
+                                    line.setAttribute('x2', `${target.x * 100}%`);
+                                    line.setAttribute('y2', `${target.y * 100}%`);
+                                    line.setAttribute('stroke', '#fde047');
+                                    line.setAttribute('stroke-width', '2');
+                                    line.setAttribute('stroke-dasharray', '5');
+                                    svgSvg.appendChild(line);
+                                }
+                            }
+
+                            if (m.linkedInstruments) {
+                                const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
+                                linkedTags.forEach(linkedTag => {
+                                    const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
+                                    if (target) {
+                                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                        line.setAttribute('x1', `${m.x * 100}%`);
+                                        line.setAttribute('y1', `${m.y * 100}%`);
+                                        line.setAttribute('x2', `${target.x * 100}%`);
+                                        line.setAttribute('y2', `${target.y * 100}%`);
+                                        line.setAttribute('stroke', '#60a5fa');
+                                        line.setAttribute('stroke-width', '2');
+                                        line.setAttribute('stroke-dasharray', '4,4');
+                                        svgSvg.appendChild(line);
+                                    }
+                                });
+                            }
+                        }
+                    });
                 }
             }
 
