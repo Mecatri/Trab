@@ -82,7 +82,7 @@
             </h2>
 
             <div class="text-[11px] text-gray-400 bg-gray-800/60 p-2 rounded border border-gray-700/50 mb-3 leading-relaxed">
-                Clique no PDF para posicionar um marcador ou selecione um abaixo para editar.
+                Clique no PDF para posicionar um marcador, selecione um para editar, ou arraste o marcador para reposicioná-lo.
             </div>
 
             <form id="markerForm" onsubmit="event.preventDefault(); salvarMarcador();" class="space-y-3 text-xs">
@@ -217,6 +217,9 @@
         let isDragging = false;
         let startX = 0;
         let startY = 0;
+
+        // Variáveis para controle de arrastar o marcador
+        let draggingMarkerId = null;
 
         let markers = [];
         let generalDefs = "";
@@ -471,13 +474,64 @@
         });
 
         window.addEventListener('mousemove', function(e) {
+            // Se estiver arrastando um marcador para mudar de lugar
+            if (draggingMarkerId) {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / canvas.width));
+                const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / canvas.height));
+
+                const markerElem = document.querySelector(`.marker-wrapper[data-id="${draggingMarkerId}"]`);
+                if (markerElem) {
+                    markerElem.style.left = `${x * 100}%`;
+                    markerElem.style.top = `${y * 100}%`;
+                }
+                return;
+            }
+
             if (!isDragging) return;
             panX = e.clientX - startX;
             panY = e.clientY - startY;
             atualizarTransformacaoCanvas();
         });
 
-        window.addEventListener('mouseup', function() { isDragging = false; });
+        window.addEventListener('mouseup', async function(e) { 
+            isDragging = false; 
+
+            if (draggingMarkerId) {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / canvas.width));
+                const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / canvas.height));
+
+                const marker = markers.find(m => m.id === draggingMarkerId);
+                if (marker) {
+                    marker.x = x;
+                    marker.y = y;
+
+                    atualizarStatusSupabase('syncing', 'Atualizando posição...');
+                    const payload = {
+                        id: marker.id,
+                        page: marker.page,
+                        x: marker.x,
+                        y: marker.y,
+                        tag: marker.tag,
+                        type: marker.type,
+                        description: marker.desc,
+                        range: marker.range,
+                        comments: marker.comments,
+                        correlated_tag: marker.correlatedTag,
+                        linked_instruments: marker.linkedInstruments,
+                        alarm_table: marker.alarmTable,
+                        updated_at: new Date().toISOString()
+                    };
+
+                    await supabaseClient.from('pid_markers').upsert(payload);
+                    atualizarStatusSupabase('connected', 'Supabase Realtime Ativo');
+                }
+
+                draggingMarkerId = null;
+                renderMarkers();
+            }
+        });
 
         canvas.addEventListener('click', function(e) {
             const rect = canvas.getBoundingClientRect();
@@ -558,13 +612,11 @@
                         const linkedTags = m.linkedInstruments ? m.linkedInstruments.split(/[\s,;]+/).map(t => t.toUpperCase()).filter(t => t.length > 0) : [];
                         const correlatedTag = m.correlatedTag ? m.correlatedTag.toUpperCase() : null;
 
-                        // Verifica se o item 'm' deve renderizar conexões porque ele é o próprio selecionado OU porque ele está ligado ao selecionado
                         const isOrigin = (m.id === selectedMarkerId);
                         const isLinkedTarget = linkedTags.includes(selectedTag);
                         const isCorrelatedTarget = (correlatedTag === selectedTag);
 
                         if (isOrigin || isLinkedTarget || isCorrelatedTarget) {
-                            // Desenha linhas para TAG Correlacionada antiga (se houver)
                             if (correlatedTag) {
                                 const target = pageMarkers.find(t => t.tag.toUpperCase() === correlatedTag);
                                 if (target) {
@@ -580,7 +632,6 @@
                                 }
                             }
 
-                            // Desenha linhas para múltiplos Instrumentos Linkados
                             linkedTags.forEach(linkedTag => {
                                 const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag);
                                 if (target) {
@@ -623,11 +674,19 @@
 
                 const wrapperElem = document.createElement('div');
                 wrapperElem.className = 'absolute marker-wrapper pointer-events-auto cursor-pointer';
+                wrapperElem.setAttribute('data-id', m.id);
                 wrapperElem.style.left = `${m.x * 100}%`;
                 wrapperElem.style.top = `${m.y * 100}%`;
 
+                // Evento para iniciar o arraste do marcador
+                wrapperElem.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    draggingMarkerId = m.id;
+                    carregarMarcadorForm(m.id);
+                });
+
                 const dot = document.createElement('div');
-                dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 ${colorClass} ${
+                dot.className = `marker-dot w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-lg transition-transform hover:scale-125 cursor-grab active:cursor-grabbing ${colorClass} ${
                     isSelected ? 'ring-4 ring-yellow-400 scale-110' : 'border border-gray-900'
                 }`;
                 dot.innerHTML = '📍';
