@@ -546,43 +546,46 @@
             
             document.getElementById('totalMarkersCount').textContent = `${markers.length} total`;
 
-            // Desenhar linhas de correlação e links múltiplos
-            pageMarkers.forEach(m => {
-                // Linha de TAG Correlacionada única antiga
-                if (m.correlatedTag) {
-                    const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
-                    if (target) {
-                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line.setAttribute('x1', `${m.x * 100}%`);
-                        line.setAttribute('y1', `${m.y * 100}%`);
-                        line.setAttribute('x2', `${target.x * 100}%`);
-                        line.setAttribute('y2', `${target.y * 100}%`);
-                        line.setAttribute('stroke', '#fde047');
-                        line.setAttribute('stroke-width', '2');
-                        line.setAttribute('stroke-dasharray', '5');
-                        svgSvg.appendChild(line);
-                    }
-                }
-
-                // Linhas de Instrumentos Linkados (múltiplas TAGs separadas por vírgula, ponto e vírgula ou espaço)
-                if (m.linkedInstruments) {
-                    const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
-                    linkedTags.forEach(linkedTag => {
-                        const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
+            // Desenhar linhas apenas para o marcador atualmente selecionado
+            if (selectedMarkerId) {
+                const m = pageMarkers.find(item => item.id === selectedMarkerId);
+                if (m) {
+                    // Linha de TAG Correlacionada única antiga (se houver)
+                    if (m.correlatedTag) {
+                        const target = pageMarkers.find(t => t.tag.toUpperCase() === m.correlatedTag.toUpperCase());
                         if (target) {
                             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                             line.setAttribute('x1', `${m.x * 100}%`);
                             line.setAttribute('y1', `${m.y * 100}%`);
                             line.setAttribute('x2', `${target.x * 100}%`);
                             line.setAttribute('y2', `${target.y * 100}%`);
-                            line.setAttribute('stroke', '#60a5fa');
+                            line.setAttribute('stroke', '#fde047');
                             line.setAttribute('stroke-width', '2');
-                            line.setAttribute('stroke-dasharray', '4,4');
+                            line.setAttribute('stroke-dasharray', '5');
                             svgSvg.appendChild(line);
                         }
-                    });
+                    }
+
+                    // Linhas de Instrumentos Linkados (múltiplas TAGs) do marcador selecionado
+                    if (m.linkedInstruments) {
+                        const linkedTags = m.linkedInstruments.split(/[\s,;]+/).filter(t => t.length > 0);
+                        linkedTags.forEach(linkedTag => {
+                            const target = pageMarkers.find(t => t.tag.toUpperCase() === linkedTag.toUpperCase());
+                            if (target) {
+                                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                line.setAttribute('x1', `${m.x * 100}%`);
+                                line.setAttribute('y1', `${m.y * 100}%`);
+                                line.setAttribute('x2', `${target.x * 100}%`);
+                                line.setAttribute('y2', `${target.y * 100}%`);
+                                line.setAttribute('stroke', '#60a5fa');
+                                line.setAttribute('stroke-width', '2');
+                                line.setAttribute('stroke-dasharray', '4,4');
+                                svgSvg.appendChild(line);
+                            }
+                        });
+                    }
                 }
-            });
+            }
 
             if (pendingCoords && !selectedMarkerId) {
                 const tempDot = document.createElement('div');
