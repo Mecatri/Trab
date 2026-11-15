@@ -1921,14 +1921,15 @@
         const pc = c[item.pc];
         const tc = c[item.tc];
 
+        // Correção Realista: Se o spray (TC) for fechado ou insuficiente, a temperatura sobe livremente até >300°C, acionando o intertravamento TH
         let baseTemp = item.targetT;
         if (ts.highTest) {
-          baseTemp = 278.0;
+          baseTemp = 325.0;
         } else if (ts.lowTest) {
           baseTemp = item.tll - 6.0;
-        } else if (pc.flowIn > 1.0) {
-          const sprayEffect = (tc.valvePos / 100) * 95.0;
-          baseTemp = item.targetT + 22.0 - sprayEffect;
+        } else {
+          const sprayEffect = (tc.valvePos / 100) * 170.0;
+          baseTemp = (item.targetT + 150.0) - sprayEffect;
         }
 
         ts.b += (baseTemp - ts.b) * Math.min(1, effDt * 0.7);
