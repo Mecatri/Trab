@@ -1689,7 +1689,7 @@
       // 2. SETPOINTS BASE E CASCATA EXATOS DAS FOLHAS 5 A 13
       const c = state.controllers;
 
-      // VSA (Fls. 5, 6, 11)
+      // VSA (Fls. 5, 6, 11) - Escalonamento Exato conforme P&ID
       let spBaseVSA = state.baseSP.vsa;
       let srcVSA = 'Ajuste .1 (Fallback)';
       if (!t3.tripped && t3.breakerClosed && t3.admAuto && t3.spAdm > 93 && t3.spAdm < 103) {
@@ -1704,10 +1704,10 @@
       state.calcSpVSA = spBaseVSA;
       state.srcSpVSA = srcVSA;
       c['PC-0012'].spR = spBaseVSA + 1.5;
-      c['PC-0013'].spR = c['PC-0012'].blocked ? c['PC-0012'].spR : c['PC-0012'].spR + 0.5;
-      c['PC-0014'].spR = c['PC-0013'].blocked ? c['PC-0013'].spR : c['PC-0013'].spR + 0.5;
+      c['PC-0013'].spR = spBaseVSA + 2.0;
+      c['PC-0014'].spR = spBaseVSA + 2.5;
 
-      // VUM (Fls. 7, 8, 12)
+      // VUM (Fls. 7, 8, 12) - Escalonamento Exato conforme P&ID
       let spBaseVUM = state.baseSP.vum;
       let srcVUM = 'Ajuste .1 (Fallback)';
       if (!t3.tripped && t3.breakerClosed && t3.extAuto && t3.yePos > 5 && t3.spExt > 7 && t3.spExt < 11) {
@@ -1722,10 +1722,10 @@
       state.calcSpVUM = spBaseVUM;
       state.srcSpVUM = srcVUM;
       c['PC-0034'].spR = spBaseVUM - 0.30;
-      c['PC-0035'].spR = c['PC-0034'].blocked ? c['PC-0034'].spR - 0.20 : spBaseVUM + 0.30;
+      c['PC-0035'].spR = spBaseVUM - 0.50;
       c['PC-0036'].spR = spBaseVUM + 0.30;
 
-      // VUB (Fls. 9, 10, 13)
+      // VUB (Fls. 9, 10, 13) - Escalonamento Exato conforme P&ID
       let spBaseVUB = state.baseSP.vub;
       let srcVUB = 'Ajuste .1 (Fallback)';
       if (!t1.tripped && t1.breakerClosed && t1.extAuto && t1.yePos > 5 && t1.spExt > 3 && t1.spExt < 6) {
@@ -1737,13 +1737,12 @@
       }
       state.calcSpVUB = spBaseVUB;
       state.srcSpVUB = srcVUB;
-      c['PC-0060'].spR = spBaseVUB + 0.30;
-      c['PC-0061'].spR = c['PC-0060'].blocked ? c['PC-0060'].spR : c['PC-0060'].spR + 0.10;
-
       c['PC-0040'].spR = spBaseVUB - 0.15;
-      c['PC-0037'].spR = c['PC-0040'].blocked ? c['PC-0040'].spR : c['PC-0040'].spR - 0.08;
-      c['PC-0038'].spR = c['PC-0037'].blocked ? c['PC-0037'].spR : c['PC-0037'].spR - 0.07;
-      c['PC-0039'].spR = c['PC-0038'].blocked ? c['PC-0038'].spR : c['PC-0038'].spR - 0.10;
+      c['PC-0037'].spR = spBaseVUB - 0.23;
+      c['PC-0038'].spR = spBaseVUB - 0.30;
+      c['PC-0039'].spR = spBaseVUB - 0.40;
+      c['PC-0060'].spR = spBaseVUB + 0.20;
+      c['PC-0061'].spR = spBaseVUB + 0.40;
 
       // 3. INTERTRAVAMENTOS DE VÁLVULAS OV E TEMPERATURA TH/TLL
       c['PC-0012'].maxLim = state.ov['OV-0007'] ? 105 : 0;
