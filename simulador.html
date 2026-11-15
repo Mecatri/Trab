@@ -1921,7 +1921,7 @@
         const pc = c[item.pc];
         const tc = c[item.tc];
 
-        // Correção Realista: Se o spray (TC) for fechado ou insuficiente, a temperatura sobe livremente até >300°C, acionando o intertravamento TH
+        // Dinâmica Térmica Realista: Se a dessuperaquecedora (spray) for fechada ou insuficiente, a temperatura sobe livremente acima de 300°C
         let baseTemp = item.targetT;
         if (ts.highTest) {
           baseTemp = 325.0;
@@ -1940,13 +1940,24 @@
         const isTH = ts.calc >= 270.0;
         const isTLL = ts.calc <= item.tll;
 
+        // Temporizador de Persistência (TON): Se a temperatura permanecer alta (>=270°C) por mais de 4 segundos contínuos,
+        // o intertravamento de segurança atua fechando totalmente a condicionadora (PC) e a dessuperaquecedora (TC).
         if (isTH) {
-          ts.thLimit = Math.max(10.0, ts.thLimit - 0.5 * effDt);
+          ts.highTimer = (ts.highTimer || 0) + effDt;
+          ts.thLimit = Math.max(0.0, ts.thLimit - 2.0 * effDt);
         } else {
+          ts.highTimer = Math.max(0, (ts.highTimer || 0) - effDt * 2);
           ts.thLimit = Math.min(105.0, ts.thLimit + 5.0 * effDt);
         }
 
-        tc.maxLim = isTLL ? 0 : 100;
+        // Se o temporizador ultrapassar 4.0 segundos de temperatura alta contínua, o fechamento é TOTAL (0%)
+        const tripTempClosed = (ts.highTimer >= 4.0);
+        if (tripTempClosed) {
+          ts.thLimit = 0.0;
+          tc.maxLim = 0.0;
+        } else {
+          tc.maxLim = isTLL ? 0 : 100;
+        }
         tc.pv = ts.calc;
         if (pc.fcCmd) {
           tc.fcCmd = true;
@@ -2716,7 +2727,14 @@
       if (h.vsa.p > 103.0) alarms.push('⚠️ PRESSÃO ALTA VSA (>103 bar)');
       if (h.vsa.p < 93.0) alarms.push('⚠️ PRESSÃO BAIXA VSA (<93 bar)');
       Object.entries(state.tempSensors).forEach(([pv, ts]) => {
-        if (ts.calc >= 270) alarms.push(`🔥 TH ALTA ${pv} (${ts.calc.toFixed(0)}°C)`);
+        if (ts.calc >= 270) {
+          const tRem = Math.max(0, 4.0 - (ts.highTimer || 0));
+          if (tRem > 0) {
+            alarms.push(`⚠️ ALARME TH ${pv} (${ts.calc.toFixed(0)}°C) - FECHAMENTO EM ${tRem.toFixed(1)}s`);
+          } else {
+            alarms.push(`🔥 TRIP TEMPERATURA ALTA ${pv} (${ts.calc.toFixed(0)}°C) - VALVULA E SPRAY FECHADOS!`);
+          }
+        }
       });
 
       const alarmBar = document.getElementById('active-alarms-bar');
