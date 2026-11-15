@@ -1944,19 +1944,23 @@
         // o intertravamento de segurança atua fechando totalmente a condicionadora (PC) e a dessuperaquecedora (TC).
         if (isTH) {
           ts.highTimer = (ts.highTimer || 0) + effDt;
-          ts.thLimit = Math.max(0.0, ts.thLimit - 2.0 * effDt);
+          // Quando atinge 270°C, ajusta imediatamente o limite de abertura da válvula para 10%
+          ts.thLimit = 10.0;
         } else {
+          // Se a temperatura cair abaixo de 270°C, zera o temporizador e normaliza gradualmente o limite
           ts.highTimer = Math.max(0, (ts.highTimer || 0) - effDt * 2);
-          ts.thLimit = Math.min(105.0, ts.thLimit + 5.0 * effDt);
+          if (ts.highTimer === 0) {
+            ts.thLimit = Math.min(105.0, ts.thLimit + 5.0 * effDt);
+          }
         }
 
-        // Se o temporizador ultrapassar 4.0 segundos de temperatura alta contínua, o fechamento é TOTAL (0%)
-        const tripTempClosed = (ts.highTimer >= 4.0);
+        // Temporizador de retardo (TON) de 600 segundos (10 minutos) antes do fechamento definitivo (0%)
+        const tripTempClosed = (ts.highTimer >= 600.0);
         if (tripTempClosed) {
           ts.thLimit = 0.0;
           tc.maxLim = 0.0;
         } else {
-          tc.maxLim = isTLL ? 0 : 100;
+          tc.maxLim = isTLL ? 0 : (isTH ? 10.0 : 100);
         }
         tc.pv = ts.calc;
         if (pc.fcCmd) {
