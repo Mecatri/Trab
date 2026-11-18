@@ -1,3 +1,2844 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDCD 5050 - Sistema de Vapor | Arauco Projeto Sucuriú (11-5050-AUT-0119-DIG)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-app: #090d14;
+      --bg-panel: #101724;
+      --bg-card: #151e2e;
+      --border-dim: #223047;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-app);
+      color: #e2e8f0;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #283752;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3d5278;
+    }
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+    .pipe-flow {
+      stroke-dasharray: 8 4;
+      animation: dashFlow 0.8s linear infinite;
+    }
+    .pipe-flow-slow {
+      stroke-dasharray: 6 6;
+      animation: dashFlow 2.0s linear infinite;
+    }
+    @keyframes pulseAlarm {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .alarm-blink {
+      animation: pulseAlarm 0.85s infinite;
+    }
+    .pid-box {
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .pid-box:hover {
+      filter: brightness(1.25);
+    }
+    input[type="number"] {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 3px 6px;
+      width: 100%;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- CABEÇALHO SUPERIOR SDCD -->
+  <header class="bg-[#0d131f] border-b border-[#223047] px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30 shadow-xl">
+    <div class="flex items-center gap-2.5">
+      <div class="bg-sky-500/15 border border-sky-500/40 px-2.5 py-1 rounded-md flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="sim-status-dot"></span>
+        <span class="mono font-bold text-xs tracking-wider text-sky-400">SDCD 5050</span>
+      </div>
+      <div>
+        <h1 class="text-xs sm:text-sm md:text-base font-bold text-slate-100 leading-tight">
+          CONTROLES DO SISTEMA DE VAPOR <span class="text-slate-400 font-normal hidden lg:inline">| 11-5050-AUT-0119-DIG (REV. 1)</span>
+        </h1>
+        <p class="text-[10px] sm:text-[11px] text-slate-400">ARAUCO • PROJETO SUCURIÚ • COLETORES VSA / VUM / VUB &amp; TURBOGERADORES TG-1/2/3</p>
+      </div>
+    </div>
+
+    <!-- INDICADORES RÁPIDOS DOS 3 COLETORES & EXPORTAÇÃO -->
+    <div class="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+      <div class="bg-[#151e2e] border border-red-500/40 rounded-md px-2.5 py-1 flex items-center gap-1.5">
+        <span class="text-[11px] font-bold text-red-400">VSA</span>
+        <span class="mono text-xs sm:text-sm font-bold text-white" id="hdr-p-vsa">98.50</span>
+        <span class="text-[10px] text-slate-400">bar</span>
+        <span class="mono text-[11px] text-red-300 border-l border-slate-700 pl-1.5" id="hdr-t-vsa">513°C</span>
+      </div>
+      <div class="bg-[#151e2e] border border-amber-500/40 rounded-md px-2.5 py-1 flex items-center gap-1.5">
+        <span class="text-[11px] font-bold text-amber-400">VUM</span>
+        <span class="mono text-xs sm:text-sm font-bold text-white" id="hdr-p-vum">8.50</span>
+        <span class="text-[10px] text-slate-400">bar</span>
+        <span class="mono text-[11px] text-amber-300 border-l border-slate-700 pl-1.5" id="hdr-t-vum">185°C</span>
+      </div>
+      <div class="bg-[#151e2e] border border-cyan-500/40 rounded-md px-2.5 py-1 flex items-center gap-1.5">
+        <span class="text-[11px] font-bold text-cyan-400">VUB</span>
+        <span class="mono text-xs sm:text-sm font-bold text-white" id="hdr-p-vub">4.00</span>
+        <span class="text-[10px] text-slate-400">bar</span>
+        <span class="mono text-[11px] text-cyan-300 border-l border-slate-700 pl-1.5" id="hdr-t-vub">155°C</span>
+      </div>
+      <div class="bg-[#151e2e] border border-emerald-500/40 rounded-md px-2.5 py-1 flex items-center gap-1.5">
+        <span class="text-[11px] font-bold text-emerald-400">EXP</span>
+        <span class="mono text-xs sm:text-sm font-bold text-white" id="hdr-mw-exp">140.0</span>
+        <span class="text-[10px] text-slate-400">MW</span>
+      </div>
+    </div>
+
+    <!-- CONTROLE DE VELOCIDADE E RESTAURAÇÃO -->
+    <div class="flex items-center gap-1 bg-[#151e2e] p-1 rounded-md border border-[#223047]">
+      <button onclick="setSimSpeed(0)" id="spd-0" class="px-2 py-1 text-xs mono rounded hover:bg-slate-700 text-slate-300" title="Pausar Simulação">⏸</button>
+      <button onclick="setSimSpeed(1)" id="spd-1" class="px-2 py-1 text-xs mono rounded bg-sky-600 text-white font-bold">1x</button>
+      <button onclick="setSimSpeed(5)" id="spd-5" class="px-2 py-1 text-xs mono rounded hover:bg-slate-700 text-slate-300">5x</button>
+      <button onclick="setSimSpeed(20)" id="spd-20" class="px-2 py-1 text-xs mono rounded hover:bg-slate-700 text-slate-300">20x</button>
+      <button onclick="resetNominal()" class="ml-1 px-2.5 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-100 rounded font-medium border border-slate-600" title="Restaurar Regime Nominal (t=0s)">
+        ↺ Nominal
+      </button>
+    </div>
+  </header>
+
+  <!-- NAVEGAÇÃO DE TELAS (ABAS) -->
+  <nav class="bg-[#0c111c] border-b border-[#223047] px-3 sm:px-4 flex items-center justify-between overflow-x-auto">
+    <div class="flex space-x-1.5 py-1.5">
+      <button onclick="switchTab('synoptic')" id="tab-synoptic" class="tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-sky-600/20 text-sky-400 border border-sky-500/40 flex items-center gap-1.5 whitespace-nowrap">
+        <span>🏭</span> Sinóptico P&amp;ID &amp; Trends
+      </button>
+      <button onclick="switchTab('cascades')" id="tab-cascades" class="tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center gap-1.5 whitespace-nowrap">
+        <span>🎛️</span> Malhas, Turbinas TCS &amp; Mid-Range
+      </button>
+      <button onclick="switchTab('trips')" id="tab-trips" class="tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center gap-1.5 whitespace-nowrap">
+        <span>⚡</span> Trips / MWC-0060 / Votação 2oo3
+      </button>
+    </div>
+    <div class="hidden xl:flex items-center gap-2 text-[11px] text-slate-400">
+      <span class="px-2.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-700">💡 Clique nos blocos <b class="text-sky-400">PC / TC / MWC</b>, nas turbinas <b class="text-emerald-400">TG-1/2/3</b> ou nas válvulas <b class="text-amber-300">OV / HV</b> para operar</span>
+    </div>
+  </nav>
+
+  <!-- ÁREA PRINCIPAL -->
+  <main class="flex-1 p-3 sm:p-4 max-w-[1920px] w-full mx-auto space-y-4">
+
+    <!-- ==================== ABA 1: SINÓPTICO P&ID & TRENDS ==================== -->
+    <section id="view-synoptic" class="space-y-4">
+      <!-- Container do Fluxograma SVG Interativo -->
+      <div class="bg-[#101724] border border-[#223047] rounded-xl p-2 sm:p-3 shadow-xl overflow-x-auto">
+        <div class="min-w-[1260px]">
+          <svg id="pid-svg" viewBox="0 0 1480 730" class="w-full h-auto bg-[#0a0f19] rounded-lg border border-[#1e293b]">
+            <defs>
+              <marker id="arrow-vsa" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+              </marker>
+              <marker id="arrow-vum" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+              </marker>
+              <marker id="arrow-vub" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#06b6d4" />
+              </marker>
+            </defs>
+
+            <!-- GRADE DE REFERÊNCIA -->
+            <g stroke="#141e30" stroke-width="1">
+              <line x1="0" y1="150" x2="1480" y2="150" stroke-dasharray="4 4"/>
+              <line x1="0" y1="450" x2="1480" y2="450" stroke-dasharray="4 4"/>
+              <line x1="0" y1="660" x2="1480" y2="660" stroke-dasharray="4 4"/>
+            </g>
+
+            <!-- ================= CALDEIRAS (ESQUERDA SUPERIOR - FL. 3) ================= -->
+            <g transform="translate(18, 16)">
+              <rect x="0" y="0" width="150" height="84" rx="6" fill="#151e2e" stroke="#ef4444" stroke-width="1.5"/>
+              <text x="75" y="16" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="bold">CALDEIRA RECUPERAÇÃO</text>
+              <text x="75" y="29" text-anchor="middle" fill="#94a3b8" font-size="8">4405-HV-1342 / 1345</text>
+              <rect x="15" y="36" width="120" height="24" rx="4" fill="#0a0f19" stroke="#334155"/>
+              <text x="75" y="52" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="12" font-weight="bold" id="svg-flow-cr">675.0 t/h</text>
+              <!-- Válvulas HV CR -->
+              <g class="pid-box" onclick="toggleOV('4405-HV-1342')" transform="translate(12, 64)">
+                <rect x="0" y="0" width="58" height="15" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-4405-HV-1342"/>
+                <text x="29" y="10.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" id="ov-txt-4405-HV-1342">HV-1342</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('4405-HV-1345')" transform="translate(78, 64)">
+                <rect x="0" y="0" width="58" height="15" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-4405-HV-1345"/>
+                <text x="29" y="10.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" id="ov-txt-4405-HV-1345">HV-1345</text>
+              </g>
+            </g>
+
+            <g transform="translate(182, 16)">
+              <rect x="0" y="0" width="150" height="84" rx="6" fill="#151e2e" stroke="#ef4444" stroke-width="1.5"/>
+              <text x="75" y="16" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="bold">CALDEIRA DE FORÇA</text>
+              <text x="75" y="29" text-anchor="middle" fill="#94a3b8" font-size="8">4804-HV-1222 / 1227</text>
+              <rect x="15" y="36" width="120" height="24" rx="4" fill="#0a0f19" stroke="#334155"/>
+              <text x="75" y="52" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="12" font-weight="bold" id="svg-flow-cf">250.0 t/h</text>
+              <!-- Válvulas HV CF -->
+              <g class="pid-box" onclick="toggleOV('4804-HV-1222')" transform="translate(12, 64)">
+                <rect x="0" y="0" width="58" height="15" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-4804-HV-1222"/>
+                <text x="29" y="10.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" id="ov-txt-4804-HV-1222">HV-1222</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('4804-HV-1227')" transform="translate(78, 64)">
+                <rect x="0" y="0" width="58" height="15" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-4804-HV-1227"/>
+                <text x="29" y="10.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" id="ov-txt-4804-HV-1227">HV-1227</text>
+              </g>
+            </g>
+
+            <!-- Tubulação Caldeiras -> VSA -->
+            <path d="M 93 100 L 93 145" stroke="#ef4444" stroke-width="3.5" class="pipe-flow"/>
+            <path d="M 257 100 L 257 145" stroke="#ef4444" stroke-width="3.5" class="pipe-flow"/>
+            <!-- Interligação OV-0018 / OV-0019 -->
+            <path d="M 168 122 L 315 122 L 315 145" stroke="#ef4444" stroke-width="2" fill="none"/>
+            <g class="pid-box" onclick="toggleOV('OV-0018')" transform="translate(274, 112)">
+              <rect x="0" y="0" width="38" height="17" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0018"/>
+              <text x="19" y="11.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" font-weight="bold" id="ov-txt-OV-0018">OV0018</text>
+            </g>
+            <g class="pid-box" onclick="toggleOV('OV-0019')" transform="translate(318, 112)">
+              <rect x="0" y="0" width="38" height="17" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0019"/>
+              <text x="19" y="11.5" text-anchor="middle" fill="#10b981" font-size="7.5" font-family="JetBrains Mono" font-weight="bold" id="ov-txt-OV-0019">OV0019</text>
+            </g>
+            <!-- PT-0100 & TI-0099 -->
+            <g transform="translate(362, 102)">
+              <rect x="0" y="0" width="84" height="32" rx="4" fill="#0f172a" stroke="#ef4444"/>
+              <text x="42" y="10" text-anchor="middle" fill="#fca5a5" font-size="7.5">PT-0100 / TI-0099</text>
+              <text x="42" y="21" text-anchor="middle" fill="#fff" font-size="8.5" font-family="JetBrains Mono" id="svg-pt0100">98.7b | 514°C</text>
+            </g>
+
+            <!-- ================= COLETOR VSA (ALTA PRESSÃO - 93..103 bar) ================= -->
+            <rect x="18" y="144" width="1444" height="13" rx="4" fill="#991b1b" stroke="#ef4444" stroke-width="1.5"/>
+            <text x="30" y="153.5" fill="#ffffff" font-size="9" font-weight="bold" font-family="JetBrains Mono">COLETOR VSA (ALTA PRESSÃO • 93–103 bar)</text>
+            <!-- Display PY-0011 (PT-0011A/B) & TY-0010 (TT-0010A/B) -->
+            <g transform="translate(1165, 114)">
+              <rect x="0" y="0" width="295" height="25" rx="4" fill="#1e1b1e" stroke="#ef4444" stroke-width="1.5"/>
+              <text x="10" y="16" fill="#fca5a5" font-size="8.5" font-weight="bold">PY-0011:</text>
+              <text x="56" y="16.5" fill="#ffffff" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-p-vsa">98.50 bar</text>
+              <text x="138" y="16" fill="#fca5a5" font-size="8.5" font-weight="bold">TY-0010:</text>
+              <text x="188" y="16.5" fill="#fcd34d" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-t-vsa">513.0 °C</text>
+            </g>
+
+            <!-- ================= BLOW-OFF VSA (PV-0012, PV-0013, PV-0014 - FL. 3) ================= -->
+            <g id="group-vsa-blowoff">
+              <!-- PV-0012 -->
+              <g transform="translate(475, 16)">
+                <line x1="36" y1="128" x2="36" y2="25" stroke="#ef4444" stroke-width="2.5" id="pipe-pv0012"/>
+                <polygon points="36,10 28,25 44,25" fill="none" stroke="#ef4444" stroke-width="1.5"/>
+                <g class="pid-box" onclick="toggleOV('OV-0007')" transform="translate(16, 102)">
+                  <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0007"/>
+                  <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0007">OV0007</text>
+                </g>
+                <g class="pid-box" onclick="openFaceplate('PC-0012')" transform="translate(0, 34)">
+                  <rect x="0" y="0" width="72" height="58" rx="5" fill="#151e2e" stroke="#ef4444" stroke-width="1.5" id="card-PV-0012"/>
+                  <text x="36" y="12" text-anchor="middle" fill="#fca5a5" font-size="8.5" font-weight="bold">PC-0012</text>
+                  <text x="36" y="23" text-anchor="middle" fill="#e2e8f0" font-size="8">PV-0012</text>
+                  <text x="36" y="38" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0012">0.0%</text>
+                  <text x="36" y="50" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono" id="svg-flow-PV-0012">0.0 t/h</text>
+                </g>
+              </g>
+
+              <!-- PV-0013 -->
+              <g transform="translate(580, 16)">
+                <line x1="36" y1="128" x2="36" y2="25" stroke="#ef4444" stroke-width="2.5" id="pipe-pv0013"/>
+                <polygon points="36,10 28,25 44,25" fill="none" stroke="#ef4444" stroke-width="1.5"/>
+                <g class="pid-box" onclick="toggleOV('OV-0008')" transform="translate(16, 102)">
+                  <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0008"/>
+                  <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0008">OV0008</text>
+                </g>
+                <g class="pid-box" onclick="openFaceplate('PC-0013')" transform="translate(0, 34)">
+                  <rect x="0" y="0" width="72" height="58" rx="5" fill="#151e2e" stroke="#ef4444" stroke-width="1.5" id="card-PV-0013"/>
+                  <text x="36" y="12" text-anchor="middle" fill="#fca5a5" font-size="8.5" font-weight="bold">PC-0013</text>
+                  <text x="36" y="23" text-anchor="middle" fill="#e2e8f0" font-size="8">PV-0013</text>
+                  <text x="36" y="38" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0013">0.0%</text>
+                  <text x="36" y="50" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono" id="svg-flow-PV-0013">0.0 t/h</text>
+                </g>
+              </g>
+
+              <!-- PV-0014 -->
+              <g transform="translate(685, 16)">
+                <line x1="36" y1="128" x2="36" y2="25" stroke="#ef4444" stroke-width="2.5" id="pipe-pv0014"/>
+                <polygon points="36,10 28,25 44,25" fill="none" stroke="#ef4444" stroke-width="1.5"/>
+                <g class="pid-box" onclick="toggleOV('OV-0009')" transform="translate(16, 102)">
+                  <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0009"/>
+                  <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0009">OV0009</text>
+                </g>
+                <g class="pid-box" onclick="openFaceplate('PC-0014')" transform="translate(0, 34)">
+                  <rect x="0" y="0" width="72" height="58" rx="5" fill="#151e2e" stroke="#ef4444" stroke-width="1.5" id="card-PV-0014"/>
+                  <text x="36" y="12" text-anchor="middle" fill="#fca5a5" font-size="8.5" font-weight="bold">PC-0014</text>
+                  <text x="36" y="23" text-anchor="middle" fill="#e2e8f0" font-size="8">PV-0014</text>
+                  <text x="36" y="38" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0014">0.0%</text>
+                  <text x="36" y="50" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono" id="svg-flow-PV-0014">0.0 t/h</text>
+                </g>
+              </g>
+
+              <!-- MWC-0060 Bloco Supervisor (Fls. 43-46) -->
+              <g class="pid-box" onclick="openFaceplate('MWC-0060')" transform="translate(785, 20)">
+                <rect x="0" y="0" width="142" height="68" rx="5" fill="#151e2e" stroke="#10b981" stroke-width="1.5"/>
+                <text x="71" y="14" text-anchor="middle" fill="#34d399" font-size="9" font-weight="bold">MWC-0060 (LIM. EXP)</text>
+                <text x="71" y="28" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono">SP: <tspan id="svg-mwc-sp">150.0</tspan> MW</text>
+                <text x="71" y="42" text-anchor="middle" fill="#38bdf8" font-size="10" font-weight="bold" font-family="JetBrains Mono">OUT: <tspan id="svg-mwc-out">0.0%</tspan></text>
+                <text x="71" y="56" text-anchor="middle" fill="#94a3b8" font-size="8" id="svg-mwc-sel">SEL: PV-0012</text>
+              </g>
+            </g>
+
+            <!-- ================= CONDICIONADORAS VSA -> VUM (PV-0034, PV-0035 - FL. 4) ================= -->
+            <!-- PV-0034 + TV-0041 -->
+            <g transform="translate(26, 157)">
+              <line x1="48" y1="0" x2="48" y2="288" stroke="#f59e0b" stroke-width="2.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0006')" transform="translate(28, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0006"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0006">OV0006</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0034')" transform="translate(4, 38)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#f59e0b" stroke-width="1.5" id="card-PV-0034"/>
+                <text x="44" y="13" text-anchor="middle" fill="#fcd34d" font-size="9" font-weight="bold">PC-0034 / PV-34</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0034">40.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0034">100.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0041">TY41: 185°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0041">TV41: 18%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0041')" transform="translate(14, 120)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0041 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0049')" transform="translate(28, 255)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0049"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0049">OV0049</text>
+              </g>
+            </g>
+
+            <!-- PV-0035 + TV-0042 -->
+            <g transform="translate(132, 157)">
+              <line x1="48" y1="0" x2="48" y2="288" stroke="#f59e0b" stroke-width="2.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0005')" transform="translate(28, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0005"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0005">OV0005</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0035')" transform="translate(4, 38)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#f59e0b" stroke-width="1.5" id="card-PV-0035"/>
+                <text x="44" y="13" text-anchor="middle" fill="#fcd34d" font-size="9" font-weight="bold">PC-0035 / PV-35</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0035">0.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0035">0.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0042">TY42: 185°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0042">TV42: 0%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0042')" transform="translate(14, 120)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0042 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0050')" transform="translate(28, 255)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0050"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0050">OV0050</text>
+              </g>
+            </g>
+
+            <!-- ================= COLETOR VUM (MÉDIA PRESSÃO - 7.0..11.0 bar) ================= -->
+            <rect x="18" y="445" width="1444" height="13" rx="4" fill="#b45309" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="30" y="454.5" fill="#ffffff" font-size="9" font-weight="bold" font-family="JetBrains Mono">COLETOR VUM (MÉDIA PRESSÃO • 7.0–11.0 bar)</text>
+            <g transform="translate(1165, 415)">
+              <rect x="0" y="0" width="295" height="25" rx="4" fill="#1e1b18" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="10" y="16" fill="#fcd34d" font-size="8.5" font-weight="bold">PY-0068:</text>
+              <text x="56" y="16.5" fill="#ffffff" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-p-vum">8.50 bar</text>
+              <text x="138" y="16" fill="#fcd34d" font-size="8.5" font-weight="bold">TY-0069:</text>
+              <text x="188" y="16.5" fill="#fcd34d" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-t-vum">185.0 °C</text>
+            </g>
+
+            <!-- ================= CONDICIONADORA VUM -> VUB (PV-0036 + TV-0043) ================= -->
+            <g transform="translate(26, 458)">
+              <line x1="48" y1="0" x2="48" y2="196" stroke="#06b6d4" stroke-width="2.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0051')" transform="translate(28, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0051"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0051">OV0051</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0036')" transform="translate(4, 36)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0036"/>
+                <text x="44" y="13" text-anchor="middle" fill="#67e8f9" font-size="9" font-weight="bold">PC-0036 / PV-36</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0036">0.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0036">0.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0043">TY43: 155°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0043">TV43: 0%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0043')" transform="translate(14, 118)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0043 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0052')" transform="translate(28, 170)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0052"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0052">OV0052</text>
+              </g>
+            </g>
+
+            <!-- ================= CONDICIONADORAS VSA -> VUB (PV-0037, PV-0038, PV-0039, PV-0040) ================= -->
+            <!-- PV-0037 -->
+            <g transform="translate(248, 157)">
+              <line x1="46" y1="0" x2="46" y2="498" stroke="#06b6d4" stroke-width="2" stroke-dasharray="6 2"/>
+              <g class="pid-box" onclick="toggleOV('OV-0004')" transform="translate(26, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0004"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0004">OV0004</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0037')" transform="translate(2, 336)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0037"/>
+                <text x="44" y="13" text-anchor="middle" fill="#67e8f9" font-size="9" font-weight="bold">PC-0037 / PV-37</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0037">0.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0037">0.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0044">TY44: 155°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0044">TV44: 0%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0044')" transform="translate(12, 416)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0044 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0053')" transform="translate(26, 470)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0053"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0053">OV0053</text>
+              </g>
+            </g>
+
+            <!-- PV-0038 -->
+            <g transform="translate(350, 157)">
+              <line x1="46" y1="0" x2="46" y2="498" stroke="#06b6d4" stroke-width="2" stroke-dasharray="6 2"/>
+              <g class="pid-box" onclick="toggleOV('OV-0003')" transform="translate(26, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0003"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0003">OV0003</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0038')" transform="translate(2, 336)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0038"/>
+                <text x="44" y="13" text-anchor="middle" fill="#67e8f9" font-size="9" font-weight="bold">PC-0038 / PV-38</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0038">0.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0038">0.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0045">TY45: 155°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0045">TV45: 0%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0045')" transform="translate(12, 416)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0045 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0054')" transform="translate(26, 470)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0054"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0054">OV0054</text>
+              </g>
+            </g>
+
+            <!-- PV-0039 -->
+            <g transform="translate(452, 157)">
+              <line x1="46" y1="0" x2="46" y2="498" stroke="#06b6d4" stroke-width="2" stroke-dasharray="6 2"/>
+              <g class="pid-box" onclick="toggleOV('OV-0002')" transform="translate(26, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0002"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0002">OV0002</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0039')" transform="translate(2, 336)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0039"/>
+                <text x="44" y="13" text-anchor="middle" fill="#67e8f9" font-size="9" font-weight="bold">PC-0039 / PV-39</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0039">0.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0039">0.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0046">TY46: 155°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0046">TV46: 0%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0046')" transform="translate(12, 416)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0046 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0055')" transform="translate(26, 470)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0055"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0055">OV0055</text>
+              </g>
+            </g>
+
+            <!-- PV-0040 (PRINCIPAL COM MID-RANGE - FLS. 65-66) -->
+            <g transform="translate(554, 157)">
+              <line x1="46" y1="0" x2="46" y2="498" stroke="#06b6d4" stroke-width="2.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0001')" transform="translate(26, 12)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0001"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0001">OV0001</text>
+              </g>
+              <!-- Sinal Mid Range tracejado para PV-37/38/39 -->
+              <path d="M 2 353 L -215 353" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+              <rect x="-148" y="344" width="88" height="16" rx="3" fill="#2e1065" stroke="#a855f7"/>
+              <text x="-104" y="355" text-anchor="middle" fill="#e9d5ff" font-size="8" font-family="JetBrains Mono">MID-R: <tspan id="svg-midrange">0.0%</tspan></text>
+
+              <g class="pid-box" onclick="openFaceplate('PC-0040')" transform="translate(2, 336)">
+                <rect x="0" y="0" width="88" height="74" rx="5" fill="#151e2e" stroke="#a855f7" stroke-width="1.8" id="card-PV-0040"/>
+                <text x="44" y="13" text-anchor="middle" fill="#d8b4fe" font-size="9" font-weight="bold">PC-0040 / PV-40</text>
+                <text x="44" y="28" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0040">39.0%</text>
+                <text x="44" y="42" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-flow-PV-0040">60.0 t/h</text>
+                <text x="44" y="55" text-anchor="middle" fill="#fb923c" font-size="8.5" font-family="JetBrains Mono" id="svg-temp-TY-0047">TY47: 155°C</text>
+                <text x="44" y="67" text-anchor="middle" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" id="svg-tv-TV-0047">TV47: 15%</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('TC-0047')" transform="translate(12, 416)">
+                <rect x="0" y="0" width="68" height="22" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+                <text x="34" y="14" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="bold">TC-0047 (SP)</text>
+              </g>
+              <g class="pid-box" onclick="toggleOV('OV-0056')" transform="translate(26, 470)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0056"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0056">OV0056</text>
+              </g>
+            </g>
+
+            <!-- ================= TURBOGERADORES TG-1, TG-2, TG-3 (FL. 29) ================= -->
+            <!-- TG-1: CONDENSAÇÃO + EXTRAÇÃO VUB -->
+            <g class="pid-box" onclick="openTurbineModal('tg1')" transform="translate(680, 198)">
+              <line x1="85" y1="-41" x2="85" y2="15" stroke="#ef4444" stroke-width="4" class="pipe-flow"/>
+              <text x="92" y="-14" fill="#fca5a5" font-size="9" font-family="JetBrains Mono">FI-1003: <tspan id="svg-tg1-adm" font-weight="bold">300</tspan> t/h</text>
+
+              <rect x="0" y="15" width="205" height="154" rx="8" fill="#131c2e" stroke="#10b981" stroke-width="2" id="box-tg1"/>
+              <polygon points="18,40 120,25 120,85 18,70" fill="#065f46" stroke="#10b981" stroke-width="1.5"/>
+              <text x="69" y="59" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="bold">TG-1</text>
+              <circle cx="162" cy="55" r="23" fill="#0a0f19" stroke="#38bdf8" stroke-width="2"/>
+              <text x="162" y="53" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="bold">GEN-1</text>
+              <text x="162" y="64" text-anchor="middle" fill="#fff" font-size="9" font-family="JetBrains Mono" id="svg-tg1-mw">66 MW</text>
+
+              <text x="10" y="102" fill="#94a3b8" font-size="8.5">Tipo: <tspan fill="#e2e8f0" font-weight="600">Condensação + Ext. VUB</tspan></text>
+              <text x="10" y="116" fill="#94a3b8" font-size="8.5">HP/LP: <tspan fill="#38bdf8" font-family="JetBrains Mono" id="svg-tg1-pos">32%</tspan> | YE: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg1-ye">34%</tspan></text>
+              <text x="10" y="130" fill="#94a3b8" font-size="8.5">Condens. (FI-1034): <tspan fill="#60a5fa" font-family="JetBrains Mono" id="svg-tg1-cond">180 t/h</tspan></text>
+              <text x="10" y="144" fill="#94a3b8" font-size="8.5">Spin. Res. Trip: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg1-sr">0.0 MW</tspan></text>
+              <text x="10" y="158" fill="#34d399" font-size="8" font-family="JetBrains Mono" id="svg-tg1-mode">TCS: ADM AUTO | EXT AUTO</text>
+
+              <rect x="122" y="178" width="72" height="26" rx="4" fill="#0c4a6e" stroke="#38bdf8"/>
+              <text x="158" y="194" text-anchor="middle" fill="#bae6fd" font-size="8" font-weight="bold">CONDENSADOR</text>
+              <line x1="155" y1="169" x2="155" y2="178" stroke="#38bdf8" stroke-width="2.5"/>
+
+              <!-- Extração TG-1 -> VUB -->
+              <line x1="55" y1="169" x2="55" y2="457" stroke="#06b6d4" stroke-width="3" class="pipe-flow"/>
+              <rect x="6" y="214" width="98" height="22" rx="3" fill="#0a0f19" stroke="#06b6d4"/>
+              <text x="55" y="228" text-anchor="middle" fill="#67e8f9" font-size="8.5" font-family="JetBrains Mono">EXT VUB: <tspan id="svg-tg1-ext">120</tspan> t/h</text>
+            </g>
+
+            <!-- TG-2: CONTRAPRESSÃO (EXTRAÇÃO VUM + ESCAPE VUB) -->
+            <g class="pid-box" onclick="openTurbineModal('tg2')" transform="translate(925, 198)">
+              <line x1="85" y1="-41" x2="85" y2="15" stroke="#ef4444" stroke-width="4" class="pipe-flow"/>
+              <text x="92" y="-14" fill="#fca5a5" font-size="9" font-family="JetBrains Mono">FI-2003: <tspan id="svg-tg2-adm" font-weight="bold">310</tspan> t/h</text>
+
+              <rect x="0" y="15" width="205" height="154" rx="8" fill="#131c2e" stroke="#38bdf8" stroke-width="2" id="box-tg2"/>
+              <polygon points="18,40 120,25 120,85 18,70" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="69" y="59" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="bold">TG-2</text>
+              <circle cx="162" cy="55" r="23" fill="#0a0f19" stroke="#38bdf8" stroke-width="2"/>
+              <text x="162" y="53" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="bold">GEN-2</text>
+              <text x="162" y="64" text-anchor="middle" fill="#fff" font-size="9" font-family="JetBrains Mono" id="svg-tg2-mw">49 MW</text>
+
+              <text x="10" y="102" fill="#94a3b8" font-size="8.5">Tipo: <tspan fill="#e2e8f0" font-weight="600">Contrapressão (VUM/VUB)</tspan></text>
+              <text x="10" y="116" fill="#94a3b8" font-size="8.5">HP/LP: <tspan fill="#38bdf8" font-family="JetBrains Mono" id="svg-tg2-pos">24%</tspan> | YE: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg2-ye">51%</tspan></text>
+              <text x="10" y="130" fill="#94a3b8" font-size="8.5">Ext VUM (FI-2009): <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg2-ext-txt">180 t/h</tspan></text>
+              <text x="10" y="144" fill="#94a3b8" font-size="8.5">Spin. Res. Trip: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg2-sr">0.0 MW</tspan></text>
+              <text x="10" y="158" fill="#38bdf8" font-size="8" font-family="JetBrains Mono" id="svg-tg2-mode">TCS: EXT AUTO | ESC AUTO</text>
+
+              <!-- Extração TG-2 -> VUM -->
+              <line x1="45" y1="169" x2="45" y2="247" stroke="#f59e0b" stroke-width="3" class="pipe-flow"/>
+              <rect x="2" y="194" width="90" height="22" rx="3" fill="#0a0f19" stroke="#f59e0b"/>
+              <text x="47" y="208" text-anchor="middle" fill="#fcd34d" font-size="8.5" font-family="JetBrains Mono">EXT VUM: <tspan id="svg-tg2-ext">180</tspan> t/h</text>
+
+              <!-- Escape TG-2 -> VUB -->
+              <line x1="142" y1="169" x2="142" y2="457" stroke="#06b6d4" stroke-width="3" class="pipe-flow"/>
+              <rect x="100" y="214" width="96" height="22" rx="3" fill="#0a0f19" stroke="#06b6d4"/>
+              <text x="148" y="228" text-anchor="middle" fill="#67e8f9" font-size="8.5" font-family="JetBrains Mono">ESC VUB: <tspan id="svg-tg2-esc">130</tspan> t/h</text>
+            </g>
+
+            <!-- TG-3: CONDENSAÇÃO + EXTRAÇÃO VUM + SANGRIA -->
+            <g class="pid-box" onclick="openTurbineModal('tg3')" transform="translate(1170, 198)">
+              <line x1="85" y1="-41" x2="85" y2="15" stroke="#ef4444" stroke-width="4" class="pipe-flow"/>
+              <text x="92" y="-14" fill="#fca5a5" font-size="9" font-family="JetBrains Mono">FI-3003: <tspan id="svg-tg3-adm" font-weight="bold">340</tspan> t/h</text>
+
+              <rect x="0" y="15" width="225" height="154" rx="8" fill="#131c2e" stroke="#0ea5e9" stroke-width="2" id="box-tg3"/>
+              <polygon points="18,40 120,25 120,85 18,70" fill="#0c4a6e" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="69" y="59" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="bold">TG-3</text>
+              <circle cx="172" cy="55" r="23" fill="#0a0f19" stroke="#38bdf8" stroke-width="2"/>
+              <text x="172" y="53" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="bold">GEN-3</text>
+              <text x="172" y="64" text-anchor="middle" fill="#fff" font-size="9" font-family="JetBrains Mono" id="svg-tg3-mw">73 MW</text>
+
+              <text x="10" y="102" fill="#94a3b8" font-size="8.5">Tipo: <tspan fill="#e2e8f0" font-weight="600">Condens. + Ext. VUM + Sangria</tspan></text>
+              <text x="10" y="116" fill="#94a3b8" font-size="8.5">HP/MP: <tspan fill="#38bdf8" font-family="JetBrains Mono" id="svg-tg3-pos">31%</tspan> | YE: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg3-ye">45%</tspan></text>
+              <text x="10" y="130" fill="#94a3b8" font-size="8.5">Cond: <tspan fill="#60a5fa" font-family="JetBrains Mono" id="svg-tg3-cond">156</tspan> | Sang (FI3023): <tspan fill="#94a3b8" font-family="JetBrains Mono" id="svg-tg3-sang">24 t/h</tspan></text>
+              <text x="10" y="144" fill="#94a3b8" font-size="8.5">Spin. Res. Trip: <tspan fill="#fbbf24" font-family="JetBrains Mono" id="svg-tg3-sr">0.0 MW</tspan></text>
+              <text x="10" y="158" fill="#38bdf8" font-size="8" font-family="JetBrains Mono" id="svg-tg3-mode">TCS: ADM AUTO | EXT AUTO</text>
+
+              <rect x="142" y="178" width="74" height="26" rx="4" fill="#0c4a6e" stroke="#38bdf8"/>
+              <text x="179" y="194" text-anchor="middle" fill="#bae6fd" font-size="8" font-weight="bold">CONDENSADOR</text>
+              <line x1="175" y1="169" x2="175" y2="178" stroke="#38bdf8" stroke-width="2.5"/>
+
+              <!-- Extração TG-3 -> VUM -->
+              <line x1="55" y1="169" x2="55" y2="247" stroke="#f59e0b" stroke-width="3" class="pipe-flow"/>
+              <rect x="6" y="194" width="98" height="22" rx="3" fill="#0a0f19" stroke="#f59e0b"/>
+              <text x="55" y="208" text-anchor="middle" fill="#fcd34d" font-size="8.5" font-family="JetBrains Mono">EXT VUM: <tspan id="svg-tg3-ext">160</tspan> t/h</text>
+            </g>
+
+            <!-- ================= COLETOR VUB (BAIXA PRESSÃO - 3.0..6.0 bar) ================= -->
+            <rect x="18" y="655" width="1444" height="13" rx="4" fill="#0e7490" stroke="#06b6d4" stroke-width="1.5"/>
+            <text x="30" y="664.5" fill="#ffffff" font-size="9" font-weight="bold" font-family="JetBrains Mono">COLETOR VUB (BAIXA PRESSÃO • 3.0–6.0 bar)</text>
+            <g transform="translate(1165, 676)">
+              <rect x="0" y="0" width="295" height="25" rx="4" fill="#0c1922" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="10" y="16" fill="#67e8f9" font-size="8.5" font-weight="bold">PY-0070:</text>
+              <text x="56" y="16.5" fill="#ffffff" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-p-vub">4.00 bar</text>
+              <text x="138" y="16" fill="#67e8f9" font-size="8.5" font-weight="bold">TY-0078:</text>
+              <text x="188" y="16.5" fill="#fcd34d" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-t-vub">155.0 °C</text>
+            </g>
+
+            <!-- ================= BLOW-OFF VUB (PV-0060, PV-0061 - FL. 4) ================= -->
+            <g transform="translate(895, 518)">
+              <line x1="36" y1="137" x2="36" y2="25" stroke="#06b6d4" stroke-width="2.5"/>
+              <polygon points="36,10 28,25 44,25" fill="none" stroke="#06b6d4" stroke-width="1.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0057')" transform="translate(16, 110)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0057"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0057">OV0057</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0060')" transform="translate(0, 34)">
+                <rect x="0" y="0" width="72" height="58" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0060"/>
+                <text x="36" y="12" text-anchor="middle" fill="#67e8f9" font-size="8.5" font-weight="bold">PC-0060</text>
+                <text x="36" y="23" text-anchor="middle" fill="#e2e8f0" font-size="8">PV-0060</text>
+                <text x="36" y="38" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0060">0.0%</text>
+                <text x="36" y="50" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono" id="svg-flow-PV-0060">0.0 t/h</text>
+              </g>
+            </g>
+
+            <g transform="translate(1005, 518)">
+              <line x1="36" y1="137" x2="36" y2="25" stroke="#06b6d4" stroke-width="2.5"/>
+              <polygon points="36,10 28,25 44,25" fill="none" stroke="#06b6d4" stroke-width="1.5"/>
+              <g class="pid-box" onclick="toggleOV('OV-0058')" transform="translate(16, 110)">
+                <rect x="0" y="0" width="40" height="16" rx="3" fill="#0f172a" stroke="#10b981" id="ov-box-OV-0058"/>
+                <text x="20" y="11" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono" id="ov-txt-OV-0058">OV0058</text>
+              </g>
+              <g class="pid-box" onclick="openFaceplate('PC-0061')" transform="translate(0, 34)">
+                <rect x="0" y="0" width="72" height="58" rx="5" fill="#151e2e" stroke="#06b6d4" stroke-width="1.5" id="card-PV-0061"/>
+                <text x="36" y="12" text-anchor="middle" fill="#67e8f9" font-size="8.5" font-weight="bold">PC-0061</text>
+                <text x="36" y="23" text-anchor="middle" fill="#e2e8f0" font-size="8">PV-0061</text>
+                <text x="36" y="38" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="JetBrains Mono" id="svg-pos-PV-0061">0.0%</text>
+                <text x="36" y="50" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono" id="svg-flow-PV-0061">0.0 t/h</text>
+              </g>
+            </g>
+
+            <!-- ================= RESUMO DE BALANÇO DE MASSA INFERIOR ================= -->
+            <g transform="translate(170, 676)">
+              <rect x="0" y="0" width="460" height="32" rx="4" fill="#151e2e" stroke="#475569"/>
+              <text x="230" y="12" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="bold">BALANÇO DE MASSA EM TEMPO REAL (ENTRADA vs SAÍDA DOS COLETORES)</text>
+              <text x="230" y="25" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="JetBrains Mono" id="svg-mass-summary">VSA: 925/925 t/h | VUM: 454/454 t/h | VUB: 320/320 t/h</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- GRÁFICOS DE TENDÊNCIA EM TEMPO REAL (TRENDS) NA TELA PRINCIPAL -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-[#101724] border border-[#223047] rounded-xl p-3 shadow">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              Pressões dos Coletores: VSA (PY-0011), VUM (PY-0068) &amp; VUB (PY-0070)
+            </h4>
+            <span class="mono text-[11px] text-slate-300" id="trd-val-pressures">VSA: 98.50 | VUM: 8.50 | VUB: 4.00 bar</span>
+          </div>
+          <div class="h-44 w-full relative">
+            <canvas id="chart-pressures" class="w-full h-full rounded-lg bg-[#0a0f19] border border-slate-800"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-[#101724] border border-[#223047] rounded-xl p-3 shadow">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              Balanço Global de Vapor (Geração Caldeiras vs Consumo Total) &amp; Exportação MW
+            </h4>
+            <span class="mono text-[11px] text-emerald-400" id="trd-val-flows">Ger: 925 | Cons: 925 t/h | Exp: 140 MW</span>
+          </div>
+          <div class="h-44 w-full relative">
+            <canvas id="chart-balance" class="w-full h-full rounded-lg bg-[#0a0f19] border border-slate-800"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== ABA 2: MALHAS, TURBINAS TCS & MID-RANGE ==================== -->
+    <section id="view-cascades" class="hidden space-y-4">
+      <!-- CARDS DAS 3 TURBINAS COM SINAIS PROFINET TCS (FLS. 5, 7, 9, 11-13, 29) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- TG-1 -->
+        <div class="bg-[#101724] border border-emerald-500/40 rounded-xl p-4 space-y-3 shadow">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500" id="dot-tg1"></span>
+              <h3 class="font-bold text-sm text-emerald-400">TG-1 (Condensação + Extração VUB)</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="toggleBreaker('tg1')" id="btn-brk-tg1" class="px-2 py-0.5 text-[11px] mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">DISJ: FECHADO</button>
+              <button onclick="triggerTurbineTrip('tg1')" class="px-2 py-0.5 text-[11px] mono rounded bg-red-600 hover:bg-red-500 text-white font-bold">TRIP</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs mono">
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Admissão VSA (FI-1003)</span>
+              <span class="font-bold text-red-400" id="card-tg1-adm">300.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Extração VUB (Calc)</span>
+              <span class="font-bold text-cyan-400" id="card-tg1-ext">120.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Condensação (FI-1034)</span>
+              <span class="font-bold text-sky-400" id="card-tg1-cond">180.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Potência Ativa (JT0074)</span>
+              <span class="font-bold text-emerald-400" id="card-tg1-mw">66.0 MW</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG1-5051XS0030 (Pr. Adm. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg1','admAuto')" id="btn-tg1-admAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG1-5051XS0210C (Pr. Ext. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg1','extAuto')" id="btn-tg1-extAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP PY0030 (VSA)</span>
+                  <span class="mono text-red-300" id="lbl-tg1-spAdm">98.50 bar</span>
+                </div>
+                <input type="number" min="93" max="103" step="0.1" value="98.5" onchange="state.turbines.tg1.spAdm = parseFloat(this.value) || 0" id="rng-tg1-spAdm" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP PY0210A (VUB)</span>
+                  <span class="mono text-cyan-300" id="lbl-tg1-spExt">4.00 bar</span>
+                </div>
+                <input type="number" min="3.0" max="6.0" step="0.05" value="4.0" onchange="state.turbines.tg1.spExt = parseFloat(this.value) || 0" id="rng-tg1-spExt" class="w-full">
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Demanda Carga TG-1 (Fator 9,36 • Máx 936 t/h)</span>
+                <span class="mono text-slate-200" id="lbl-tg1-load">300 t/h</span>
+              </div>
+              <input type="number" min="0" max="936" step="5" value="300" onchange="setTurbineLoad('tg1', this.value)" id="rng-tg1-load" class="w-full">
+            </div>
+          </div>
+        </div>
+
+        <!-- TG-2 -->
+        <div class="bg-[#101724] border border-sky-500/40 rounded-xl p-4 space-y-3 shadow">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500" id="dot-tg2"></span>
+              <h3 class="font-bold text-sm text-sky-400">TG-2 (Contrapressão VUM/VUB)</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="toggleBreaker('tg2')" id="btn-brk-tg2" class="px-2 py-0.5 text-[11px] mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">DISJ: FECHADO</button>
+              <button onclick="triggerTurbineTrip('tg2')" class="px-2 py-0.5 text-[11px] mono rounded bg-red-600 hover:bg-red-500 text-white font-bold">TRIP</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs mono">
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Admissão VSA (FI-2003)</span>
+              <span class="font-bold text-red-400" id="card-tg2-adm">310.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Extração VUM (FI-2009)</span>
+              <span class="font-bold text-amber-400" id="card-tg2-ext">180.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Escape VUB (Calc)</span>
+              <span class="font-bold text-cyan-400" id="card-tg2-esc">130.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Potência Ativa (JT0074)</span>
+              <span class="font-bold text-emerald-400" id="card-tg2-mw">49.0 MW</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG2-5052XS0210C (Pr. Ext. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg2','extAuto')" id="btn-tg2-extAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG2-5052XS0040C (Pr. Esc. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg2','escAuto')" id="btn-tg2-escAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP PY0210A (VUM)</span>
+                  <span class="mono text-amber-300" id="lbl-tg2-spExt">8.50 bar</span>
+                </div>
+                <input type="number" min="7.0" max="11.0" step="0.05" value="8.5" onchange="state.turbines.tg2.spExt = parseFloat(this.value) || 0" id="rng-tg2-spExt" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP XY0040 (VUB)</span>
+                  <span class="mono text-cyan-300" id="lbl-tg2-spEsc">4.00 bar</span>
+                </div>
+                <input type="number" min="3.0" max="6.0" step="0.05" value="4.0" onchange="state.turbines.tg2.spEsc = parseFloat(this.value) || 0" id="rng-tg2-spEsc" class="w-full">
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Demanda Admissão TG-2 (Fator 13,0 • Máx 1300 t/h)</span>
+                <span class="mono text-slate-200" id="lbl-tg2-load">310 t/h</span>
+              </div>
+              <input type="number" min="0" max="850" step="5" value="310" onchange="setTurbineLoad('tg2', this.value)" id="rng-tg2-load" class="w-full">
+            </div>
+          </div>
+        </div>
+
+        <!-- TG-3 -->
+        <div class="bg-[#101724] border border-indigo-500/40 rounded-xl p-4 space-y-3 shadow">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500" id="dot-tg3"></span>
+              <h3 class="font-bold text-sm text-indigo-400">TG-3 (Condens. + Ext. VUM + Sangria)</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="toggleBreaker('tg3')" id="btn-brk-tg3" class="px-2 py-0.5 text-[11px] mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">DISJ: FECHADO</button>
+              <button onclick="triggerTurbineTrip('tg3')" class="px-2 py-0.5 text-[11px] mono rounded bg-red-600 hover:bg-red-500 text-white font-bold">TRIP</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs mono">
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Admissão VSA (FI-3003)</span>
+              <span class="font-bold text-red-400" id="card-tg3-adm">340.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Extração VUM (FI-3016)</span>
+              <span class="font-bold text-amber-400" id="card-tg3-ext">160.0 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Condens. / Sangria (FI-3023)</span>
+              <span class="font-bold text-sky-400" id="card-tg3-cond">156 / 24 t/h</span>
+            </div>
+            <div class="bg-[#0a0f19] p-2 rounded border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Potência Ativa (JT0074)</span>
+              <span class="font-bold text-emerald-400" id="card-tg3-mw">73.0 MW</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG3-5053XS0030 (Pr. Adm. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg3','admAuto')" id="btn-tg3-admAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="flex items-center justify-between bg-[#151e2e] px-2.5 py-1.5 rounded">
+              <span class="text-slate-300">TG3-5053XS0210C (Pr. Ext. AUTO):</span>
+              <button onclick="toggleTurbineCtrl('tg3','extAuto')" id="btn-tg3-extAuto" class="px-2 py-0.5 mono text-[11px] rounded bg-sky-600 text-white font-bold">AUTO (1)</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP PY0030 (VSA)</span>
+                  <span class="mono text-red-300" id="lbl-tg3-spAdm">98.50 bar</span>
+                </div>
+                <input type="number" min="93" max="103" step="0.1" value="98.5" onchange="state.turbines.tg3.spAdm = parseFloat(this.value) || 0" id="rng-tg3-spAdm" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                  <span>SP PY0210A (VUM)</span>
+                  <span class="mono text-amber-300" id="lbl-tg3-spExt">8.50 bar</span>
+                </div>
+                <input type="number" min="7.0" max="11.0" step="0.05" value="8.5" onchange="state.turbines.tg3.spExt = parseFloat(this.value) || 0" id="rng-tg3-spExt" class="w-full">
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Demanda Carga TG-3 (Fator 10,8 • Máx 1080 t/h)</span>
+                <span class="mono text-slate-200" id="lbl-tg3-load">340 t/h</span>
+              </div>
+              <input type="number" min="0" max="1080" step="5" value="340" onchange="setTurbineLoad('tg3', this.value)" id="rng-tg3-load" class="w-full">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 COLUNAS DE CÁLCULO DE SETPOINTS BASE E CASCATA (FLS. 5-13) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- CASCATA VSA (FLS. 5, 6, 11) -->
+        <div class="bg-[#101724] border border-red-500/30 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="font-bold text-sm text-red-400">Setpoints VSA &amp; Compensação (Fls. 5, 6, 11)</h3>
+            <span class="text-[11px] mono bg-red-500/10 text-red-300 px-2 py-0.5 rounded">93–103 bar</span>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Ajuste .1 Fallback VSA (98.5 - 1.5):</span>
+              <span class="mono font-bold text-red-300" id="lbl-base-vsa">98.50 bar</span>
+            </div>
+            <input type="number" min="93.0" max="103.0" step="0.1" value="98.5" onchange="state.baseSP.vsa = parseFloat(this.value) || 0" id="rng-base-vsa" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800 space-y-1.5 text-xs mono">
+            <div class="flex justify-between"><span class="text-slate-400">Fonte SP Base VSA:</span><span class="text-emerald-400 font-bold" id="src-sp-vsa">TG-3 (PY0030)</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Set Point Base VSA Calc:</span><span class="text-white font-bold" id="calc-sp-vsa">98.50 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0012.spR (Base + 1.5):</span><span class="text-sky-400 font-bold" id="calc-sp-pc0012">100.00 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0013.spR (+0.5 se PV12 OK):</span><span class="text-sky-400 font-bold" id="calc-sp-pc0013">100.50 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0014.spR (+0.5 se PV13 OK):</span><span class="text-sky-400 font-bold" id="calc-sp-pc0014">101.00 bar</span></div>
+          </div>
+        </div>
+
+        <!-- CASCATA VUM (FLS. 7, 8, 12) -->
+        <div class="bg-[#101724] border border-amber-500/30 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="font-bold text-sm text-amber-400">Setpoints VUM &amp; Compensação (Fls. 7, 8, 12)</h3>
+            <span class="text-[11px] mono bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded">7.0–11.0 bar</span>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Ajuste .1 Fallback VUM (8.5 + 0.3):</span>
+              <span class="mono font-bold text-amber-300" id="lbl-base-vum">8.50 bar</span>
+            </div>
+            <input type="number" min="7.0" max="11.0" step="0.05" value="8.5" onchange="state.baseSP.vum = parseFloat(this.value) || 0" id="rng-base-vum" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800 space-y-1.5 text-xs mono">
+            <div class="flex justify-between"><span class="text-slate-400">Fonte SP Base VUM:</span><span class="text-emerald-400 font-bold" id="src-sp-vum">TG-3 (PY0210A)</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Set Point Base VUM Calc:</span><span class="text-white font-bold" id="calc-sp-vum">8.50 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0034.spR (Base - 0.30):</span><span class="text-sky-400 font-bold" id="calc-sp-pc0034">8.20 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0035.spR (Base + 0.30 / -0.2):</span><span class="text-sky-400 font-bold" id="calc-sp-pc0035">8.80 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0036.spR (Alívio +0.30):</span><span class="text-cyan-400 font-bold" id="calc-sp-pc0036">8.80 bar</span></div>
+          </div>
+        </div>
+
+        <!-- CASCATA VUB (FLS. 9, 10, 13) -->
+        <div class="bg-[#101724] border border-cyan-500/30 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="font-bold text-sm text-cyan-400">Setpoints VUB &amp; Compensação (Fls. 9, 10, 13)</h3>
+            <span class="text-[11px] mono bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded">3.0–6.0 bar</span>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Ajuste .1 Fallback VUB (4.0 + 0.15):</span>
+              <span class="mono font-bold text-cyan-300" id="lbl-base-vub">4.00 bar</span>
+            </div>
+            <input type="number" min="3.0" max="6.0" step="0.05" value="4.0" onchange="state.baseSP.vub = parseFloat(this.value) || 0" id="rng-base-vub" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800 space-y-1 text-xs mono">
+            <div class="flex justify-between"><span class="text-slate-400">Fonte SP Base VUB:</span><span class="text-emerald-400 font-bold" id="src-sp-vub">TG-1 (PY0210A)</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0040.spR (Base - 0.15):</span><span class="text-purple-400 font-bold" id="calc-sp-pc0040">3.85 bar</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PC-0037 / 38 / 39.spR:</span><span class="text-sky-400 font-bold" id="calc-sp-pc0037">3.77 / 3.70 / 3.60</span></div>
+            <div class="flex justify-between border-t border-slate-800 pt-1"><span class="text-slate-400">PC-0060 / PC-0061 Blow-Off:</span><span class="text-amber-300 font-bold" id="calc-sp-pc0060">4.30 / 4.40 bar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LÓGICA MID-RANGE PC-0040 (FLS. 65 & 66) -->
+      <div class="bg-[#101724] border border-purple-500/40 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-2.5 mb-3">
+          <div>
+            <h3 class="font-bold text-sm text-purple-300">Controle Mid-Range PC-0040 → Condicionadoras VSA/VUB (Fls. 65 e 66)</h3>
+            <p class="text-xs text-slate-400">Sobe rampa (<code class="text-purple-300">urate 0.50</code>) quando <code class="text-purple-300">PC-0040.con &gt; 80%</code> (TON 1.0s), desce (<code class="text-purple-300">drate 0.50</code>) quando <code class="text-purple-300">&lt; 30%</code> e mantém retenção (latch) entre 50% e 60%.</p>
+          </div>
+          <div class="flex items-center gap-3 bg-[#0a0f19] px-3 py-1.5 rounded border border-purple-500/30">
+            <span class="text-xs text-slate-400">Saída Rampa Mid-Range:</span>
+            <span class="mono text-base font-bold text-purple-400" id="mr-output-val">0.0%</span>
+            <span class="px-2 py-0.5 text-[10px] mono rounded bg-slate-800 text-slate-300" id="mr-status-badge">INATIVO</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-[#0a0f19] p-3 rounded border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-200">SEL. CONDIC. PV-0037</div>
+              <div class="text-[11px] text-slate-400">Desliga auto se PC-0037 em Manual</div>
+            </div>
+            <button onclick="toggleMidRangeSel('PV-0037')" id="btn-mr-PV-0037" class="px-3 py-1.5 rounded mono text-xs font-bold bg-emerald-600 text-white">LIGA = 1</button>
+          </div>
+          <div class="bg-[#0a0f19] p-3 rounded border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-200">SEL. CONDIC. PV-0038</div>
+              <div class="text-[11px] text-slate-400">Desliga auto se PC-0038 em Manual</div>
+            </div>
+            <button onclick="toggleMidRangeSel('PV-0038')" id="btn-mr-PV-0038" class="px-3 py-1.5 rounded mono text-xs font-bold bg-emerald-600 text-white">LIGA = 1</button>
+          </div>
+          <div class="bg-[#0a0f19] p-3 rounded border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-200">SEL. CONDIC. PV-0039</div>
+              <div class="text-[11px] text-slate-400">Desliga auto se PC-0039 em Manual</div>
+            </div>
+            <button onclick="toggleMidRangeSel('PV-0039')" id="btn-mr-PV-0039" class="px-3 py-1.5 rounded mono text-xs font-bold bg-slate-700 text-slate-300">DESLIGA = 0</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATRIZ COMPLETA DE CONTROLADORES PIDC -->
+      <div class="bg-[#101724] border border-[#223047] rounded-xl p-4 overflow-x-auto">
+        <h3 class="font-bold text-sm text-slate-200 mb-3">Matriz de Controladores PIDC (Clique em qualquer linha para abrir Faceplate)</h3>
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-700 text-slate-400 mono text-[11px]">
+              <th class="py-2 px-2">TAG</th>
+              <th class="py-2 px-2">Serviço / Malha</th>
+              <th class="py-2 px-2">Modo</th>
+              <th class="py-2 px-2">PV (Medido)</th>
+              <th class="py-2 px-2">SP Ativo</th>
+              <th class="py-2 px-2">Saída PID</th>
+              <th class="py-2 px-2">Pos. Válvula (xyt)</th>
+              <th class="py-2 px-2">Vazão Total (t/h)</th>
+              <th class="py-2 px-2">Intertravamento</th>
+            </tr>
+          </thead>
+          <tbody id="controllers-table-body" class="divide-y divide-slate-800/80 mono"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== ABA 3: TRIPS, MWC-0060 & VOTAÇÃO 2oo3 ==================== -->
+    <section id="view-trips" class="hidden space-y-4">
+      <!-- TRIPS E ILHAMENTO (FLS. 30-42) -->
+      <div class="bg-[#101724] border border-red-500/40 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+          <div>
+            <h3 class="font-bold text-base text-red-400">Simulação de Eventos de Trip, Pulso 1.8s e Abertura Rápida (Fls. 30–42)</h3>
+            <p class="text-xs text-slate-400">Usa memória de vazão pré-trip (<code class="text-red-300">leadlag t2=10s</code>) para acionar <code class="text-red-300">fcCmd</code> nas condicionadoras e blow-offs VSA durante 1.8s.</p>
+          </div>
+          <button onclick="clearAllTrips()" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-slate-200">
+            Resetar Trips / Rearmar Turbinas
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <button onclick="triggerTurbineTrip('tg1')" class="p-3 rounded-lg bg-red-950/60 hover:bg-red-900/70 border border-red-500/50 text-left transition">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-sm text-red-300">TRIP TURBINA TG-1</span>
+              <span class="text-[10px] mono px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded">Fl. 35</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Abre Condic. VSA/VUB (PV-37..39) p/ extração VUB (÷1.30) e Blow-Off VSA.</p>
+          </button>
+
+          <button onclick="triggerTurbineTrip('tg2')" class="p-3 rounded-lg bg-red-950/60 hover:bg-red-900/70 border border-red-500/50 text-left transition">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-sm text-red-300">TRIP TURBINA TG-2</span>
+              <span class="text-[10px] mono px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded">Fl. 36</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Abre PV-34/35 (÷1.28), PV-37..39 (÷1.30) e Blow-Off VSA (PV-12..14).</p>
+          </button>
+
+          <button onclick="triggerTurbineTrip('tg3')" class="p-3 rounded-lg bg-red-950/60 hover:bg-red-900/70 border border-red-500/50 text-left transition">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-sm text-red-300">TRIP TURBINA TG-3</span>
+              <span class="text-[10px] mono px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded">Fl. 37</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Abre Condic. VSA/VUM (PV-34/35) p/ extração VUM perdida e Blow-Off VSA.</p>
+          </button>
+
+          <button onclick="triggerGridTrip()" id="btn-grid-trip" class="p-3 rounded-lg bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/50 text-left transition">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-sm text-amber-300">TRIP CONCESSIONÁRIA</span>
+              <span class="text-[10px] mono px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">1 = ILHA</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Ilhamento (Fl. 30-31): se exportação &gt; 50 MW, abre PV-37..39 e Blow-Off VSA.</p>
+          </button>
+        </div>
+
+        <!-- SPINNING RESERVE TRIP (FLS. 78 & 79) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#0a0f19] p-3 rounded-lg border border-slate-800">
+          <div>
+            <span class="text-[11px] text-slate-400 block">Spinning Reserve Trip TG-1 (Fl. 78):</span>
+            <span class="mono font-bold text-sm text-amber-400" id="sr-detail-tg1">0.00 MW</span>
+            <span class="text-[10px] text-slate-500 block">Margem condensação TG-3 + TG-1 (PY-0011 &gt; 94 bar)</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 block">Spinning Reserve Trip TG-2 (Fl. 78):</span>
+            <span class="mono font-bold text-sm text-amber-400" id="sr-detail-tg2">0.00 MW</span>
+            <span class="text-[10px] text-slate-500 block">Margem TG-1 + extração/escape TG-2</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 block">Spinning Reserve Trip TG-3 (Fl. 79):</span>
+            <span class="mono font-bold text-sm text-amber-400" id="sr-detail-tg3">0.00 MW</span>
+            <span class="text-[10px] text-slate-500 block">Margem condensação TG-1 / TG-3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLE DE LIMITE DE EXPORTAÇÃO MWC-0060 (FLS. 43 A 46) -->
+      <div class="bg-[#101724] border border-emerald-500/40 rounded-xl p-4 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+          <div>
+            <h3 class="font-bold text-base text-emerald-400">Controle de Limite de Exportação — MWC-0060 (Fls. 43 a 46)</h3>
+            <p class="text-xs text-slate-400">Integralização em janela de 15 minutos (3 intervalos de 300s) atuando nas válvulas de Blow-Off VSA selecionadas.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="resetDemandPeriod()" class="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs mono font-semibold">
+              Pulso Início Período (ZX-4004)
+            </button>
+            <button onclick="openFaceplate('MWC-0060')" class="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold">
+              Faceplate MWC-0060
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="space-y-3 bg-[#0a0f19] p-3 rounded-lg border border-slate-800">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">Ajuste Meta Exportação (100–200 MW):</span>
+                <span class="mono font-bold text-emerald-400" id="lbl-meta-exp">150.0 MW</span>
+              </div>
+              <input type="number" min="100" max="200" step="1" value="150" onchange="state.mwc.metaInicial = parseFloat(this.value) || 0" id="rng-meta-exp" class="w-full">
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs mono">
+              <div class="p-2 bg-[#101724] rounded">
+                <span class="text-[10px] text-slate-400 block">MW Concessionária</span>
+                <span class="font-bold text-white" id="mwc-mw-inst">140.0 MW</span>
+              </div>
+              <div class="p-2 bg-[#101724] rounded">
+                <span class="text-[10px] text-slate-400 block">Tempo / Intervalo</span>
+                <span class="font-bold text-sky-400" id="mwc-time">0s (Int 1/3)</span>
+              </div>
+              <div class="p-2 bg-[#101724] rounded">
+                <span class="text-[10px] text-slate-400 block">Exportação Média</span>
+                <span class="font-bold text-amber-300" id="mwc-mw-avg">140.0 MW</span>
+              </div>
+              <div class="p-2 bg-[#101724] rounded">
+                <span class="text-[10px] text-slate-400 block">Exportação Projetada</span>
+                <span class="font-bold text-purple-300" id="mwc-mw-proj">140.0 MW</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-[#0a0f19] p-3 rounded-lg border border-slate-800 space-y-2 text-xs mono">
+            <div class="text-slate-300 font-sans font-semibold border-b border-slate-800 pb-1">Parâmetros Dinâmicos (Fl. 44)</div>
+            <div class="flex justify-between"><span class="text-slate-400">Meta Export. Corrigida:</span><span class="text-emerald-400 font-bold" id="mwc-meta-corr">150.00 MW</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Setpoint Remoto (spR):</span><span class="text-sky-400 font-bold" id="mwc-spr">150.00 MW</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Tempo Op. / Tempo Parada:</span><span class="text-slate-200" id="mwc-times">0s / 300s</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Banda Morta / Ganho Din.:</span><span class="text-slate-200" id="mwc-gain">ATIVA / 0.15</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Saída Controlador (con):</span><span class="text-amber-400 font-bold" id="mwc-con">0.0%</span></div>
+          </div>
+
+          <div class="bg-[#0a0f19] p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="text-xs font-semibold text-slate-300 border-b border-slate-800 pb-1">Seleção Válvula Blow-Off para MWC-0060 (Fl. 45)</div>
+            <div class="flex items-center justify-between text-xs py-1">
+              <span>SEL. BLOW OFF PV-0012:</span>
+              <button onclick="toggleMwcBlowoff('PV-0012')" id="btn-mwc-PV-0012" class="px-2.5 py-1 rounded mono text-[11px] font-bold bg-emerald-600 text-white">LIGA = 1</button>
+            </div>
+            <div class="flex items-center justify-between text-xs py-1">
+              <span>SEL. BLOW OFF PV-0013:</span>
+              <button onclick="toggleMwcBlowoff('PV-0013')" id="btn-mwc-PV-0013" class="px-2.5 py-1 rounded mono text-[11px] font-bold bg-slate-700 text-slate-300">DESLIGA = 0</button>
+            </div>
+            <div class="flex items-center justify-between text-xs py-1">
+              <span>SEL. BLOW OFF PV-0014:</span>
+              <button onclick="toggleMwcBlowoff('PV-0014')" id="btn-mwc-PV-0014" class="px-2.5 py-1 rounded mono text-[11px] font-bold bg-slate-700 text-slate-300">DESLIGA = 0</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VOTAÇÃO 2oo3 DE TEMPERATURA E INJEÇÃO DE FALHA (FLS. 14-25) -->
+      <div class="bg-[#101724] border border-[#223047] rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5 mb-3">
+          <div>
+            <h3 class="font-bold text-sm text-amber-300">Proteção Térmica &amp; Votação 2oo3 das 7 Condicionadoras (Fls. 14 a 25)</h3>
+            <p class="text-xs text-slate-400">Alarme Temperatura Alta <code class="text-red-400">TH = 270°C</code> (rampa limita válvula PV a 10%) e Temperatura Baixa <code class="text-cyan-400">TLL = 175°C (VUM) / 152°C (VUB)</code> (bloqueia spray TV).</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs" id="temp-voting-grid"></div>
+      </div>
+    </section>
+
+    <!-- ==================== PAINEL INFERIOR: PERTURBAÇÕES DE PROCESSO ==================== -->
+    <section class="bg-[#101724] border border-[#223047] rounded-xl p-3.5 shadow-lg">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-3">
+        <h2 class="text-xs sm:text-sm font-bold text-sky-400 uppercase tracking-wider">Perturbações de Processo (Geração das Caldeiras, Demanda da Fábrica &amp; Carga Elétrica)</h2>
+        <span class="text-[11px] text-slate-400">Partida em regime permanente equilibrado (t = 0s) • Ajuste os sliders para testar resposta dinâmica</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-red-300 font-medium">Caldeira Recuperação</span>
+            <span class="mono font-bold text-white" id="lbl-gen-cr">675 t/h</span>
+          </div>
+          <input type="number" min="0" max="950" step="5" value="675" onchange="state.plant.genCR = parseFloat(this.value) || 0" id="rng-gen-cr" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-red-300 font-medium">Caldeira de Força</span>
+            <span class="mono font-bold text-white" id="lbl-gen-cf">250 t/h</span>
+          </div>
+          <input type="number" min="0" max="500" step="5" value="250" onchange="state.plant.genCF = parseFloat(this.value) || 0" id="rng-gen-cf" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-slate-300 font-medium">Consumo Processo VSA</span>
+            <span class="mono font-bold text-red-400" id="lbl-dem-vsa">15 t/h</span>
+          </div>
+          <input type="number" min="0" max="300" step="5" value="15" onchange="state.plant.demVSA = parseFloat(this.value) || 0" id="rng-dem-vsa" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-amber-300 font-medium">Consumo Processo VUM</span>
+            <span class="mono font-bold text-amber-400" id="lbl-dem-vum">454 t/h</span>
+          </div>
+          <input type="number" min="0" max="750" step="5" value="454" onchange="state.plant.demVUM = parseFloat(this.value) || 0" id="rng-dem-vum" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-cyan-300 font-medium">Consumo Processo VUB</span>
+            <span class="mono font-bold text-cyan-400" id="lbl-dem-vub">320 t/h</span>
+          </div>
+          <input type="number" min="0" max="700" step="5" value="320" onchange="state.plant.demVUB = parseFloat(this.value) || 0" id="rng-dem-vub" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded-lg border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-emerald-300 font-medium">Carga Interna Planta</span>
+            <span class="mono font-bold text-emerald-400" id="lbl-load-mw">48 MW</span>
+          </div>
+          <input type="number" min="0" max="140" step="2" value="48" onchange="state.plant.loadMW = parseFloat(this.value) || 0" id="rng-load-mw" class="w-full">
+        </div>
+      </div>
+    </section>
+
+    <!-- BARRA DE ALARMES E LOG DE EVENTOS -->
+    <footer class="bg-[#0d131f] border border-[#223047] rounded-xl p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2 flex-wrap" id="active-alarms-bar">
+        <span class="px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono font-semibold">SISTEMA EM EQUILÍBRIO NOMINAL • SEM ALARMES ATIVOS</span>
+      </div>
+      <div class="mono text-[11px] text-slate-400 truncate max-w-full sm:max-w-lg" id="event-log-latest">
+        [INIT] SDCD 11-5050-AUT-0119-DIG inicializado em regime permanente (VSA 98.5 | VUM 8.5 | VUB 4.0 bar).
+      </div>
+    </footer>
+  </main>
+
+  <!-- ==================== MODAL FACEPLATE DO CONTROLADOR (PIDC) ==================== -->
+  <div id="faceplate-modal" class="fixed inset-0 bg-black/75 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+    <div class="bg-[#101724] border-2 border-sky-500/60 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="bg-[#0d131f] px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+        <div>
+          <span class="mono font-bold text-base text-sky-400" id="fp-tag">PC-0034</span>
+          <span class="text-xs text-slate-400 block" id="fp-desc">Controlador Pressão VUM</span>
+        </div>
+        <button onclick="closeFaceplate()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-200 font-bold">✕</button>
+      </div>
+
+      <div class="p-4 space-y-4 text-xs">
+        <div class="grid grid-cols-3 gap-2 text-center mono">
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">PV (MEDIDO)</span>
+            <span class="text-base font-bold text-white" id="fp-pv">8.50</span>
+            <span class="text-[10px] text-slate-400" id="fp-unit">bar</span>
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-sky-500/40">
+            <span class="text-[10px] text-sky-400 block">SP ATIVO</span>
+            <span class="text-base font-bold text-sky-300" id="fp-sp">8.20</span>
+            <span class="text-[10px] text-slate-400" id="fp-unit2">bar</span>
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-amber-500/40">
+            <span class="text-[10px] text-amber-400 block">SAÍDA (CON)</span>
+            <span class="text-base font-bold text-amber-300" id="fp-out">8.0%</span>
+            <span class="text-[10px] text-slate-400 block">Válv: <span id="fp-valve-pos">41.6%</span></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-[#151e2e] p-2.5 rounded border border-slate-700">
+            <span class="text-[11px] text-slate-400 block mb-1.5">Modo Operação (opModSel)</span>
+            <div class="grid grid-cols-2 gap-1 mono">
+              <button onclick="setFpMode('AUTO')" id="fp-btn-auto" class="py-1.5 rounded font-bold bg-sky-600 text-white">AUTO</button>
+              <button onclick="setFpMode('MAN')" id="fp-btn-man" class="py-1.5 rounded font-bold bg-slate-800 text-slate-400">MAN</button>
+            </div>
+          </div>
+
+          <div class="bg-[#151e2e] p-2.5 rounded border border-slate-700">
+            <span class="text-[11px] text-slate-400 block mb-1.5">Seleção Setpoint (spModSel)</span>
+            <div class="grid grid-cols-2 gap-1 mono">
+              <button onclick="setFpSpMode(true)" id="fp-btn-rem" class="py-1.5 rounded font-bold bg-emerald-600 text-white">REM (spR)</button>
+              <button onclick="setFpSpMode(false)" id="fp-btn-loc" class="py-1.5 rounded font-bold bg-slate-800 text-slate-400">LOCAL</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-[#0a0f19] p-3 rounded border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-slate-300 font-medium">Ajuste Setpoint Local:</span>
+            <span class="mono font-bold text-sky-400" id="fp-sp-local-lbl">8.20</span>
+          </div>
+          <input type="number" id="fp-sp-slider" step="0.05" onchange="updateFpLocalSp(this.value)" class="w-full">
+        </div>
+
+        <div class="bg-[#0a0f19] p-3 rounded border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-slate-300 font-medium">Comando Saída Manual (0–100%):</span>
+            <span class="mono font-bold text-amber-400" id="fp-man-lbl">0.0%</span>
+          </div>
+          <input type="number" min="0" max="100" step="0.5" id="fp-man-slider" onchange="updateFpManualOut(this.value)" class="w-full">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 bg-[#151e2e] p-2.5 rounded border border-slate-700">
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Ganho Proporcional (Kp)</label>
+            <input type="number" step="0.1" min="0.1" max="50" id="fp-kp-input" onchange="updateFpTuning()" class="w-full bg-[#0a0f19] border border-slate-700 rounded px-2 py-1 mono text-white">
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Tempo Integral Ti (s)</label>
+            <input type="number" step="1" min="1" max="300" id="fp-ti-input" onchange="updateFpTuning()" class="w-full bg-[#0a0f19] border border-slate-700 rounded px-2 py-1 mono text-white">
+          </div>
+        </div>
+
+        <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800 flex items-center justify-between mono text-[11px]">
+          <span class="text-slate-400">Limite Máx (conMaxLim): <b class="text-white" id="fp-maxlim">105%</b></span>
+          <span id="fp-interlock-status" class="text-emerald-400 font-bold">LIBERADO</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE CONTROLE TCS DA TURBINA ==================== -->
+  <div id="turbine-modal" class="fixed inset-0 bg-black/75 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+    <div class="bg-[#101724] border-2 border-emerald-500/60 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="bg-[#0d131f] px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+        <div>
+          <span class="mono font-bold text-base text-emerald-400" id="tm-title">TG-1 — CONTROLE PROFINET TCS</span>
+          <span class="text-xs text-slate-400 block" id="tm-subtitle">Condensação + Extração VUB</span>
+        </div>
+        <button onclick="closeTurbineModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-200 font-bold">✕</button>
+      </div>
+      <div class="p-4 space-y-3 text-xs" id="tm-body"></div>
+    </div>
+  </div>
+
+  <!-- ==================== MOTOR DE SIMULAÇÃO FÍSICA E LÓGICA ==================== -->
+  <script>
+    // Tabelas exatas de caracterização xytfunc das folhas 48 a 77
+    const CURVES = {
+      blowOff: [
+        [0, 0], [5, 10], [10, 17.5], [15, 20.5], [20, 23],
+        [30, 29.7], [40, 36], [50, 42.5], [60, 48.4], [70, 56],
+        [80, 64.5], [90, 78], [100, 100]
+      ],
+      condVUM: [
+        [0, 0], [2.5, 25], [5, 30], [7.5, 40], [10, 49],
+        [15, 54], [20, 58], [25, 61], [30, 63], [40, 68],
+        [50, 73], [60, 78], [90, 95], [100, 100]
+      ],
+      condVUM_VUB: [
+        [0, 0], [2, 2], [10, 31], [20, 44.6], [30, 52],
+        [35, 55], [40, 58], [50, 65], [60, 72], [70, 79],
+        [80, 86], [90, 93], [100, 100]
+      ],
+      condVUB: [
+        [0, 0], [1, 1], [5, 30], [10, 50], [20, 58],
+        [25, 60.5], [30, 63], [40, 68.5], [50, 74], [60, 78.5],
+        [70, 84], [80, 90], [90, 95], [100, 100]
+      ],
+      sprayStd: [
+        [0, 0], [5, 10], [10, 17], [15, 20], [20, 22],
+        [30, 28], [40, 35], [50, 40.5], [60, 46], [70, 53],
+        [80, 62], [90, 75], [100, 100]
+      ],
+      spray47: [
+        [0, 0], [10, 15], [15, 18], [20, 20], [30, 25],
+        [40, 30], [50, 34], [60, 39], [70, 45], [80, 53],
+        [90, 66], [100, 100]
+      ]
+    };
+
+    function interpXY(curve, x) {
+      if (x <= curve[0][0]) return curve[0][1];
+      if (x >= curve[curve.length - 1][0]) return curve[curve.length - 1][1];
+      for (let i = 0; i < curve.length - 1; i++) {
+        const [x0, y0] = curve[i];
+        const [x1, y1] = curve[i + 1];
+        if (x >= x0 && x <= x1) {
+          return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+        }
+      }
+      return x;
+    }
+
+    let simSpeed = 1;
+    let activeFaceplateTag = null;
+    let activeTurbineModal = null;
+    const historyLen = 90;
+
+    const trends = {
+      vsa: Array(historyLen).fill(98.5),
+      vum: Array(historyLen).fill(8.5),
+      vub: Array(historyLen).fill(4.0),
+      genSteam: Array(historyLen).fill(925.0),
+      consSteam: Array(historyLen).fill(925.0),
+      mwExp: Array(historyLen).fill(140.0)
+    };
+
+    // Estado inicial calibrado para EQUILÍBRIO PERFEITO em t = 0s
+    const state = {
+      headers: {
+        vsa: { p: 98.50, t: 513.0, pCald: 98.75, tCald: 514.0 },
+        vum: { p: 8.50, t: 185.0 },
+        vub: { p: 4.00, t: 155.0 }
+      },
+      baseSP: {
+        vsa: 98.50,
+        vum: 8.50,
+        vub: 4.00
+      },
+      // Geração Caldeiras = 675 + 250 = 925 t/h
+      // Consumo VSA = 15 (proc) + 300 (TG1) + 310 (TG2) + 340 (TG3) - 40 (ajuste) -> Exato:
+      // TG1=290, TG2=300, TG3=320 => Total Turbinas = 910 t/h + 15 t/h proc = 925 t/h!
+      plant: {
+        genCR: 675,
+        genCF: 250,
+        demVSA: 15,
+        demVUM: 340,
+        demVUB: 250,
+        loadMW: 45
+      },
+      ov: {
+        '4405-HV-1342': true, '4405-HV-1345': true,
+        '4804-HV-1222': true, '4804-HV-1227': true,
+        'OV-0001': true, 'OV-0002': true, 'OV-0003': true, 'OV-0004': true,
+        'OV-0005': true, 'OV-0006': true, 'OV-0007': true, 'OV-0008': true,
+        'OV-0009': true, 'OV-0018': true, 'OV-0019': true,
+        'OV-0049': true, 'OV-0050': true, 'OV-0051': true, 'OV-0052': true,
+        'OV-0053': true, 'OV-0054': true, 'OV-0055': true, 'OV-0056': true,
+        'OV-0057': true, 'OV-0058': true
+      },
+      turbines: {
+        tg1: {
+          breakerClosed: true, tripped: false,
+          admAuto: true, extAuto: true,
+          spAdm: 98.50, spExt: 4.00,
+          targetAdm: 290, admFlow: 290, condFlow: 170, extFlow: 120,
+          mw: 62.6, valvePos: 31.0, yePos: 34.3,
+          admFlowFiltered: 290, extFlowFiltered: 120,
+          tripPulseTimer: 0, tripFlowVUB: 0, tripFlowBlow: 0, spinRes: 0
+        },
+        tg2: {
+          breakerClosed: true, tripped: false,
+          extAuto: true, escAuto: true,
+          spExt: 8.50, spEsc: 4.00,
+          targetAdm: 300, admFlow: 300, extFlow: 170, escFlow: 130,
+          mw: 47.8, valvePos: 23.1, yePos: 48.6,
+          admFlowFiltered: 300, extFlowFiltered: 170, escFlowFiltered: 130,
+          tripPulseTimer: 0, tripFlowVUM: 0, tripFlowVUB: 0, tripFlowBlow: 0, spinRes: 0
+        },
+        tg3: {
+          breakerClosed: true, tripped: false,
+          admAuto: true, extAuto: true,
+          spAdm: 98.50, spExt: 8.50,
+          targetAdm: 320, admFlow: 320, extFlow: 170, sangFlow: 22.4, condFlow: 127.6,
+          mw: 63.7, valvePos: 29.6, yePos: 48.6,
+          admFlowFiltered: 320, extFlowFiltered: 170, sangFlowFiltered: 22.4,
+          tripPulseTimer: 0, tripFlowVUM: 0, tripFlowBlow: 0, spinRes: 0
+        }
+      },
+      grid: {
+        islanded: false,
+        mwExportInst: 129.1,
+        mwExportFiltered: 129.1,
+        tripPulseTimer: 0,
+        tripFlowVUB: 0,
+        tripFlowBlow: 0
+      },
+      mwc: {
+        metaInicial: 150.0,
+        metaCorrigida: 150.0,
+        timeSec: 0,
+        interval: 1,
+        integrator: 0,
+        mwAvg: 129.1,
+        mwProj: 129.1,
+        proj1: 150.0,
+        proj2: 150.0,
+        selPV0012: true,
+        selPV0013: false,
+        selPV0014: false
+      },
+      midRange: {
+        active: false,
+        timer: 0,
+        output: 0.0,
+        selPV0037: true,
+        selPV0038: true,
+        selPV0039: false
+      },
+      tempSensors: {
+        'PV-0034': { tag: 'TT-0041', a: 185, b: 185, c: 185, calc: 185, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0035': { tag: 'TT-0042', a: 185, b: 185, c: 185, calc: 185, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0036': { tag: 'TT-0043', a: 155, b: 155, c: 155, calc: 155, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0037': { tag: 'TT-0044', a: 155, b: 155, c: 155, calc: 155, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0038': { tag: 'TT-0045', a: 155, b: 155, c: 155, calc: 155, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0039': { tag: 'TT-0046', a: 155, b: 155, c: 155, calc: 155, faultA: false, highTest: false, lowTest: false, thLimit: 105 },
+        'PV-0040': { tag: 'TT-0047', a: 155, b: 155, c: 155, calc: 155, faultA: false, highTest: false, lowTest: false, thLimit: 105 }
+      },
+      controllers: {
+        'PC-0012': { desc: 'Blow-Off VSA PV-0012 (Fl. 48)', unit: 'bar', min: 90, max: 106, mode: 'AUTO', spRemote: true, spLocal: 100.0, spR: 100.0, pv: 98.5, kp: 12.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 3.37, curve: 'blowOff', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0013': { desc: 'Blow-Off VSA PV-0013 (Fl. 50)', unit: 'bar', min: 90, max: 106, mode: 'AUTO', spRemote: true, spLocal: 100.5, spR: 100.5, pv: 98.5, kp: 12.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 3.37, curve: 'blowOff', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0014': { desc: 'Blow-Off VSA PV-0014 (Fl. 52)', unit: 'bar', min: 90, max: 106, mode: 'AUTO', spRemote: true, spLocal: 101.0, spR: 101.0, pv: 98.5, kp: 12.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 3.37, curve: 'blowOff', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+
+        'PC-0034': { desc: 'Condicionadora VSA/VUM PV-0034 (Fl. 53)', unit: 'bar', min: 6, max: 12, mode: 'AUTO', spRemote: true, spLocal: 8.20, spR: 8.20, pv: 8.50, kp: 18.0, ti: 20, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 2.43, curve: 'condVUM', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0035': { desc: 'Condicionadora VSA/VUM PV-0035 (Fl. 56)', unit: 'bar', min: 6, max: 12, mode: 'AUTO', spRemote: true, spLocal: 8.00, spR: 8.00, pv: 8.50, kp: 18.0, ti: 20, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 2.43, curve: 'condVUM', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+
+        'PC-0036': { desc: 'Condicionadora VUM/VUB PV-0036 (Fl. 59)', unit: 'bar', min: 6, max: 12, mode: 'AUTO', spRemote: true, spLocal: 8.80, spR: 8.80, pv: 8.50, kp: 15.0, ti: 20, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 3.07, curve: 'condVUM_VUB', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+
+        'PC-0037': { desc: 'Condicionadora VSA/VUB PV-0037 (Fl. 67)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 3.77, spR: 3.77, pv: 4.00, kp: 22.0, ti: 18, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 4.13, curve: 'condVUB', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0038': { desc: 'Condicionadora VSA/VUB PV-0038 (Fl. 70)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 3.70, spR: 3.70, pv: 4.00, kp: 22.0, ti: 18, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 4.13, curve: 'condVUB', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0039': { desc: 'Condicionadora VSA/VUB PV-0039 (Fl. 73)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 3.60, spR: 3.60, pv: 4.00, kp: 22.0, ti: 18, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 4.13, curve: 'condVUB', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0040': { desc: 'Condicionadora VSA/VUB PV-0040 Mid-Range (Fl. 62)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 3.85, spR: 3.85, pv: 4.00, kp: 25.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 1.56, curve: 'condVUB', dir: 1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+
+        'PC-0060': { desc: 'Blow-Off VUB PV-0060 (Fl. 76)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 4.30, spR: 4.30, pv: 4.00, kp: 20.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 2.08, curve: 'blowOff', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+        'PC-0061': { desc: 'Blow-Off VUB PV-0061 (Fl. 77)', unit: 'bar', min: 2.5, max: 6.5, mode: 'AUTO', spRemote: true, spLocal: 4.40, spR: 4.40, pv: 4.00, kp: 20.0, ti: 15, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 2.08, curve: 'blowOff', dir: -1, maxLim: 105, blocked: true, fcCmd: false, fcVal: 0 },
+
+        'TC-0041': { desc: 'Temp. VUM PV-0034 (TV-0041 • Fl. 54)', unit: '°C', min: 150, max: 280, mode: 'AUTO', spRemote: false, spLocal: 185.0, spR: 185.0, pv: 185.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.45, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0042': { desc: 'Temp. VUM PV-0035 (TV-0042 • Fl. 57)', unit: '°C', min: 150, max: 280, mode: 'AUTO', spRemote: false, spLocal: 185.0, spR: 185.0, pv: 185.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.45, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0043': { desc: 'Temp. VUB PV-0036 (TV-0043 • Fl. 60)', unit: '°C', min: 130, max: 280, mode: 'AUTO', spRemote: false, spLocal: 155.0, spR: 155.0, pv: 155.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.40, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0044': { desc: 'Temp. VUB PV-0037 (TV-0044 • Fl. 68)', unit: '°C', min: 130, max: 280, mode: 'AUTO', spRemote: false, spLocal: 155.0, spR: 155.0, pv: 155.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.65, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0045': { desc: 'Temp. VUB PV-0038 (TV-0045 • Fl. 71)', unit: '°C', min: 130, max: 280, mode: 'AUTO', spRemote: false, spLocal: 155.0, spR: 155.0, pv: 155.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.65, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0046': { desc: 'Temp. VUB PV-0039 (TV-0046 • Fl. 74)', unit: '°C', min: 130, max: 280, mode: 'AUTO', spRemote: false, spLocal: 155.0, spR: 155.0, pv: 155.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.65, curve: 'sprayStd', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+        'TC-0047': { desc: 'Temp. VUB PV-0040 (TV-0047 • Fl. 63)', unit: '°C', min: 130, max: 280, mode: 'AUTO', spRemote: false, spLocal: 155.0, spR: 155.0, pv: 155.0, kp: 1.5, ti: 12, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 0.35, curve: 'spray47', dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 },
+
+        'MWC-0060': { desc: 'Controle Limite Exportação MW (Fl. 46)', unit: 'MW', min: 100, max: 200, mode: 'AUTO', spRemote: true, spLocal: 150.0, spR: 150.0, pv: 129.1, kp: 0.25, ti: 25, integral: 0, out: 0, manOut: 0, valvePos: 0, flowIn: 0, flowOut: 0, factor: 1, curve: null, dir: -1, maxLim: 100, blocked: false, fcCmd: false, fcVal: 0 }
+      }
+    };
+
+    function logEvent(msg) {
+      const now = new Date().toLocaleTimeString('pt-BR');
+      const el = document.getElementById('event-log-latest');
+      if (el) el.textContent = `[${now}] ${msg}`;
+    }
+
+    // Votação 2oo3 de Temperatura (Fls. 14-20)
+    function compute2oo3Temp(s) {
+      const { a, b, c } = s;
+      const d1 = Math.abs(a - b);
+      const d2 = Math.abs(b - c);
+      const d3 = Math.abs(c - a);
+      const maxD = Math.max(d1, d2, d3);
+      if (maxD <= 5.0) return (a + b + c) / 3;
+      if (d1 <= d2 && d1 <= d3) return (a + b) / 2;
+      if (d2 <= d1 && d2 <= d3) return (b + c) / 2;
+      return (a + c) / 2;
+    }
+
+    // Execução do bloco pidc-1 (Fl. 2)
+    function stepPID(ctrl, dt) {
+      if (ctrl.fcCmd) {
+        ctrl.out = Math.max(0, Math.min(ctrl.maxLim, ctrl.fcVal));
+        ctrl.integral = ctrl.out;
+        return;
+      }
+      if (ctrl.mode === 'MAN') {
+        ctrl.out = Math.max(0, Math.min(ctrl.maxLim, ctrl.manOut));
+        ctrl.integral = ctrl.out;
+        return;
+      }
+      const sp = ctrl.spRemote ? ctrl.spR : ctrl.spLocal;
+      const err = ctrl.dir === 1 ? (sp - ctrl.pv) : (ctrl.pv - sp);
+
+      if (ctrl === state.controllers['MWC-0060'] && Math.abs(err) < 0.5) {
+        return;
+      }
+
+      const pTerm = ctrl.kp * err;
+      ctrl.integral += (ctrl.kp / Math.max(1, ctrl.ti)) * err * dt;
+      ctrl.integral = Math.max(0, Math.min(ctrl.maxLim, ctrl.integral));
+
+      let rawOut = pTerm + ctrl.integral;
+      rawOut = Math.max(0, Math.min(ctrl.maxLim, rawOut));
+      if (ctrl.pv <= 0.01 && ctrl.dir === -1) {
+        rawOut = 0;
+        ctrl.integral = 0;
+      }
+      ctrl.out = rawOut;
+    }
+
+    // Passo da Simulação Física e Lógica SDCD
+    function simulationStep(dt) {
+      if (simSpeed === 0) return;
+      const effDt = dt * simSpeed;
+
+      // 1. DINÂMICA DAS TURBINAS & CONTROLES TCS PROFINET (Fls. 5, 7, 9, 11-13, 29)
+      const t1 = state.turbines.tg1;
+      const t2 = state.turbines.tg2;
+      const t3 = state.turbines.tg3;
+
+      // TG-1: Pr. Adm AUTO regula VSA; Pr. Ext AUTO regula VUB
+      if (t1.tripped || !t1.breakerClosed) {
+        t1.admFlow = 0; t1.condFlow = 0; t1.extFlow = 0; t1.mw = 0; t1.valvePos = 0; t1.yePos = 0;
+      } else {
+        let admCmd1 = t1.targetAdm;
+        if (t1.admAuto) {
+          const errVSA1 = state.headers.vsa.p - t1.spAdm;
+          admCmd1 += errVSA1 * 18.0;
+        }
+        admCmd1 = Math.max(60, Math.min(936, admCmd1));
+        t1.admFlow += (admCmd1 - t1.admFlow) * Math.min(1, effDt * 0.9);
+        t1.valvePos = (t1.admFlow / 936) * 100;
+
+        let extCmd1 = 120;
+        if (t1.extAuto) {
+          const errVUB1 = t1.spExt - state.headers.vub.p;
+          extCmd1 = 120 + errVUB1 * 65.0;
+        }
+        extCmd1 = Math.max(20, Math.min(t1.admFlow * 0.65, extCmd1));
+        t1.extFlow += (extCmd1 - t1.extFlow) * Math.min(1, effDt * 0.9);
+        t1.yePos = (t1.extFlow / 350) * 100;
+        t1.condFlow = Math.max(0, t1.admFlow - t1.extFlow);
+        t1.mw = (t1.condFlow * 0.275) + (t1.extFlow * 0.132);
+      }
+
+      // TG-2: Pr. Ext AUTO regula VUM; Pr. Esc AUTO regula VUB
+      if (t2.tripped || !t2.breakerClosed) {
+        t2.admFlow = 0; t2.extFlow = 0; t2.escFlow = 0; t2.mw = 0; t2.valvePos = 0; t2.yePos = 0;
+      } else {
+        let admCmd2 = t2.targetAdm;
+        if (t2.escAuto) {
+          const errVUB2 = t2.spEsc - state.headers.vub.p;
+          admCmd2 += errVUB2 * 45.0;
+        }
+        admCmd2 = Math.max(60, Math.min(1300, admCmd2));
+        t2.admFlow += (admCmd2 - t2.admFlow) * Math.min(1, effDt * 0.9);
+        t2.valvePos = (t2.admFlow / 1300) * 100;
+
+        let extCmd2 = 170;
+        if (t2.extAuto) {
+          const errVUM2 = t2.spExt - state.headers.vum.p;
+          extCmd2 = 170 + errVUM2 * 70.0;
+        }
+        extCmd2 = Math.max(20, Math.min(t2.admFlow * 0.72, extCmd2));
+        t2.extFlow += (extCmd2 - t2.extFlow) * Math.min(1, effDt * 0.9);
+        t2.escFlow = Math.max(0, t2.admFlow - t2.extFlow);
+        t2.yePos = (t2.extFlow / 350) * 100;
+        t2.mw = (t2.extFlow * 0.145) + (t2.escFlow * 0.178);
+      }
+
+      // TG-3: Pr. Adm AUTO regula VSA; Pr. Ext AUTO regula VUM + Sangria FI-3023 (7%)
+      if (t3.tripped || !t3.breakerClosed) {
+        t3.admFlow = 0; t3.extFlow = 0; t3.sangFlow = 0; t3.condFlow = 0; t3.mw = 0; t3.valvePos = 0; t3.yePos = 0;
+      } else {
+        let admCmd3 = t3.targetAdm;
+        if (t3.admAuto) {
+          const errVSA3 = state.headers.vsa.p - t3.spAdm;
+          admCmd3 += errVSA3 * 22.0;
+        }
+        admCmd3 = Math.max(60, Math.min(1080, admCmd3));
+        t3.admFlow += (admCmd3 - t3.admFlow) * Math.min(1, effDt * 0.9);
+        t3.valvePos = (t3.admFlow / 1080) * 100;
+        t3.sangFlow = t3.admFlow * 0.07;
+
+        let extCmd3 = 170;
+        if (t3.extAuto) {
+          const errVUM3 = t3.spExt - state.headers.vum.p;
+          extCmd3 = 170 + errVUM3 * 70.0;
+        }
+        extCmd3 = Math.max(20, Math.min(t3.admFlow * 0.68, extCmd3));
+        t3.extFlow += (extCmd3 - t3.extFlow) * Math.min(1, effDt * 0.9);
+        t3.condFlow = Math.max(0, t3.admFlow - t3.extFlow - t3.sangFlow);
+        t3.yePos = (t3.extFlow / 350) * 100;
+        t3.mw = (t3.condFlow * 0.278) + (t3.extFlow * 0.145) + (t3.sangFlow * 0.16);
+      }
+
+      // Memória Lead-Lag de vazão pré-trip (t2 = 10s, Fls. 33-34)
+      const alphaLL = Math.min(1, effDt / 10.0);
+      if (!t1.tripped && t1.breakerClosed) {
+        t1.admFlowFiltered += (t1.admFlow - t1.admFlowFiltered) * alphaLL;
+        t1.extFlowFiltered += (t1.extFlow - t1.extFlowFiltered) * alphaLL;
+      }
+      if (!t2.tripped && t2.breakerClosed) {
+        t2.admFlowFiltered += (t2.admFlow - t2.admFlowFiltered) * alphaLL;
+        t2.extFlowFiltered += (t2.extFlow - t2.extFlowFiltered) * alphaLL;
+        t2.escFlowFiltered += (t2.escFlow - t2.escFlowFiltered) * alphaLL;
+      }
+      if (!t3.tripped && t3.breakerClosed) {
+        t3.admFlowFiltered += (t3.admFlow - t3.admFlowFiltered) * alphaLL;
+        t3.extFlowFiltered += (t3.extFlow - t3.extFlowFiltered) * alphaLL;
+        t3.sangFlowFiltered += (t3.sangFlow - t3.sangFlowFiltered) * alphaLL;
+      }
+
+      // Temporizador pulso de 1.8s de Trip (Fls. 35-37)
+      [t1, t2, t3].forEach(t => {
+        if (t.tripPulseTimer > 0) t.tripPulseTimer = Math.max(0, t.tripPulseTimer - effDt);
+      });
+      if (state.grid.tripPulseTimer > 0) {
+        state.grid.tripPulseTimer = Math.max(0, state.grid.tripPulseTimer - effDt);
+      }
+
+      // Spinning Reserve Trip (Fls. 78-79)
+      if (state.headers.vsa.p > 94.0) {
+        t1.spinRes = (!t1.tripped && t1.breakerClosed) ? Math.min(35.0, Math.max(0, ((1080 - t3.admFlow) + (682 - t3.condFlow)) * t1.condFlow / 3000)) : 0;
+        t2.spinRes = (!t2.tripped && t2.breakerClosed) ? Math.min(35.0, Math.max(0, ((936 - t1.admFlow) + (565 - t1.condFlow)) * (t2.extFlow * 0.18 + t2.escFlow * 0.2) / 300)) : 0;
+        t3.spinRes = (!t3.tripped && t3.breakerClosed) ? Math.min(35.0, Math.max(0, ((936 - t1.admFlow) + (565 - t1.condFlow)) * t3.condFlow / 3000)) : 0;
+      } else {
+        t1.spinRes = 0; t2.spinRes = 0; t3.spinRes = 0;
+      }
+
+      // 2. SETPOINTS BASE E CASCATA EXATOS DAS FOLHAS 5 A 13
+      const c = state.controllers;
+
+      // VSA (Fls. 5, 6, 11) - Escalonamento Exato conforme P&ID
+      let spBaseVSA = state.baseSP.vsa;
+      let srcVSA = 'Ajuste .1 (Fallback)';
+      if (!t3.tripped && t3.breakerClosed && t3.admAuto && t3.spAdm > 93 && t3.spAdm < 103) {
+        const comp3 = Math.min(1, (90 - t3.valvePos) * 0.0012 + 1);
+        spBaseVSA = t3.spAdm / Math.max(0.85, comp3);
+        srcVSA = 'TG-3 (PY0030)';
+      } else if (!t1.tripped && t1.breakerClosed && t1.admAuto && t1.spAdm > 93 && t1.spAdm < 103) {
+        const comp1 = Math.min(1, (90 - t1.valvePos) * 0.0012 + 1);
+        spBaseVSA = t1.spAdm / Math.max(0.85, comp1);
+        srcVSA = 'TG-1 (PY0030)';
+      }
+      state.calcSpVSA = spBaseVSA;
+      state.srcSpVSA = srcVSA;
+      c['PC-0012'].spR = spBaseVSA + 1.5;
+      c['PC-0013'].spR = spBaseVSA + 2.0;
+      c['PC-0014'].spR = spBaseVSA + 2.5;
+
+      // VUM (Fls. 7, 8, 12) - Escalonamento Exato conforme P&ID
+      let spBaseVUM = state.baseSP.vum;
+      let srcVUM = 'Ajuste .1 (Fallback)';
+      if (!t3.tripped && t3.breakerClosed && t3.extAuto && t3.yePos > 5 && t3.spExt > 7 && t3.spExt < 11) {
+        const comp3 = Math.min(1, (90 - t3.yePos) * 0.002 + 1);
+        spBaseVUM = t3.spExt * comp3;
+        srcVUM = 'TG-3 (PY0210A)';
+      } else if (!t2.tripped && t2.breakerClosed && t2.extAuto && t2.yePos > 5 && t2.spExt > 7 && t2.spExt < 11) {
+        const comp2 = Math.min(1, (90 - t2.yePos) * 0.002 + 1);
+        spBaseVUM = t2.spExt * comp2;
+        srcVUM = 'TG-2 (PY0210A)';
+      }
+      state.calcSpVUM = spBaseVUM;
+      state.srcSpVUM = srcVUM;
+      c['PC-0034'].spR = spBaseVUM - 0.30;
+      c['PC-0035'].spR = spBaseVUM - 0.50;
+      c['PC-0036'].spR = spBaseVUM + 0.30;
+
+      // VUB (Fls. 9, 10, 13) - Escalonamento Exato conforme P&ID
+      let spBaseVUB = state.baseSP.vub;
+      let srcVUB = 'Ajuste .1 (Fallback)';
+      if (!t1.tripped && t1.breakerClosed && t1.extAuto && t1.yePos > 5 && t1.spExt > 3 && t1.spExt < 6) {
+        spBaseVUB = t1.spExt;
+        srcVUB = 'TG-1 (PY0210A)';
+      } else if (!t2.tripped && t2.breakerClosed && t2.escAuto && t2.spEsc > 3 && t2.spEsc < 6) {
+        spBaseVUB = t2.spEsc;
+        srcVUB = 'TG-2 (XY0040)';
+      }
+      state.calcSpVUB = spBaseVUB;
+      state.srcSpVUB = srcVUB;
+      c['PC-0040'].spR = spBaseVUB - 0.15;
+      c['PC-0037'].spR = spBaseVUB - 0.23;
+      c['PC-0038'].spR = spBaseVUB - 0.30;
+      c['PC-0039'].spR = spBaseVUB - 0.40;
+      c['PC-0060'].spR = spBaseVUB + 0.20;
+      c['PC-0061'].spR = spBaseVUB + 0.40;
+
+      // 3. INTERTRAVAMENTOS DE VÁLVULAS OV E TEMPERATURA TH/TLL
+      c['PC-0012'].maxLim = state.ov['OV-0007'] ? 105 : 0;
+      c['PC-0013'].maxLim = state.ov['OV-0008'] ? 105 : 0;
+      c['PC-0014'].maxLim = state.ov['OV-0009'] ? 105 : 0;
+
+      const lowVSA = state.headers.vsa.p <= 0.05;
+      c['PC-0034'].maxLim = (lowVSA || !state.ov['OV-0006'] || !state.ov['OV-0049']) ? 0 : state.tempSensors['PV-0034'].thLimit;
+      c['PC-0035'].maxLim = (lowVSA || !state.ov['OV-0005'] || !state.ov['OV-0050']) ? 0 : state.tempSensors['PV-0035'].thLimit;
+      c['PC-0036'].maxLim = (!state.ov['OV-0051'] || !state.ov['OV-0052']) ? 0 : state.tempSensors['PV-0036'].thLimit;
+      c['PC-0037'].maxLim = (lowVSA || !state.ov['OV-0004'] || !state.ov['OV-0053']) ? 0 : state.tempSensors['PV-0037'].thLimit;
+      c['PC-0038'].maxLim = (lowVSA || !state.ov['OV-0003'] || !state.ov['OV-0054']) ? 0 : state.tempSensors['PV-0038'].thLimit;
+      c['PC-0039'].maxLim = (lowVSA || !state.ov['OV-0002'] || !state.ov['OV-0055']) ? 0 : state.tempSensors['PV-0039'].thLimit;
+      c['PC-0040'].maxLim = (lowVSA || !state.ov['OV-0001'] || !state.ov['OV-0056']) ? 0 : state.tempSensors['PV-0040'].thLimit;
+
+      c['PC-0060'].maxLim = state.ov['OV-0057'] ? 105 : 0;
+      c['PC-0061'].maxLim = state.ov['OV-0058'] ? 105 : 0;
+
+      // 4. LÓGICA MID-RANGE PC-0040 (FLS. 65-66: >80% TON 1s sobe; <30% desce; latch 50-60%)
+      if (c['PC-0037'].mode === 'MAN') state.midRange.selPV0037 = false;
+      if (c['PC-0038'].mode === 'MAN') state.midRange.selPV0038 = false;
+      if (c['PC-0039'].mode === 'MAN') state.midRange.selPV0039 = false;
+
+      const anyMrSel = state.midRange.selPV0037 || state.midRange.selPV0038 || state.midRange.selPV0039;
+      if (anyMrSel && c['PC-0040'].out > 80.0) {
+        state.midRange.timer += effDt;
+        if (state.midRange.timer >= 1.0) state.midRange.active = true;
+      } else {
+        state.midRange.timer = 0;
+        if (c['PC-0040'].out < 50.0) state.midRange.active = false;
+      }
+
+      if (state.midRange.active && anyMrSel) {
+        state.midRange.output = Math.min(100, state.midRange.output + 0.50 * effDt);
+      } else if (c['PC-0040'].out < 30.0 || !anyMrSel) {
+        state.midRange.output = Math.max(0, state.midRange.output - 0.50 * effDt);
+      }
+
+      // 5. PULSOS DE TRIP EM CASCATA (Fls. 38 a 42)
+      const reqFlowVUM = (t2.tripPulseTimer > 0 ? t2.tripFlowVUM : 0) + (t3.tripPulseTimer > 0 ? t3.tripFlowVUM : 0);
+      if (reqFlowVUM > 0) {
+        const cap34 = Math.min(243, reqFlowVUM);
+        c['PC-0034'].fcCmd = true;
+        c['PC-0034'].fcVal = Math.min(100, cap34 / 2.43);
+        const remVUM = Math.max(0, reqFlowVUM - cap34);
+        c['PC-0035'].fcCmd = remVUM > 0;
+        c['PC-0035'].fcVal = Math.min(100, remVUM / 2.43);
+      } else {
+        c['PC-0034'].fcCmd = false;
+        c['PC-0035'].fcCmd = false;
+      }
+
+      const reqFlowVUB = (t1.tripPulseTimer > 0 ? t1.tripFlowVUB : 0) +
+                         (t2.tripPulseTimer > 0 ? t2.tripFlowVUB : 0) +
+                         (state.grid.tripPulseTimer > 0 ? state.grid.tripFlowVUB : 0);
+      if (reqFlowVUB > 0) {
+        const cap37 = Math.min(413, reqFlowVUB);
+        c['PC-0037'].fcCmd = true;
+        c['PC-0037'].fcVal = Math.min(100, cap37 / 4.13);
+        const rem1 = Math.max(0, reqFlowVUB - cap37);
+        const cap38 = Math.min(413, rem1);
+        c['PC-0038'].fcCmd = cap38 > 0;
+        c['PC-0038'].fcVal = Math.min(100, cap38 / 4.13);
+        const rem2 = Math.max(0, rem1 - cap38);
+        c['PC-0039'].fcCmd = rem2 > 0;
+        c['PC-0039'].fcVal = Math.min(100, rem2 / 4.13);
+      } else {
+        c['PC-0037'].fcCmd = false;
+        c['PC-0038'].fcCmd = false;
+        c['PC-0039'].fcCmd = false;
+      }
+
+      const reqFlowBlow = (t1.tripPulseTimer > 0 ? t1.tripFlowBlow : 0) +
+                          (t2.tripPulseTimer > 0 ? t2.tripFlowBlow : 0) +
+                          (t3.tripPulseTimer > 0 ? t3.tripFlowBlow : 0) +
+                          (state.grid.tripPulseTimer > 0 ? state.grid.tripFlowBlow : 0);
+      if (reqFlowBlow > 0) {
+        const cap12 = Math.min(335, reqFlowBlow);
+        c['PC-0012'].fcCmd = true;
+        c['PC-0012'].fcVal = Math.min(100, cap12 / 3.35);
+        const remB1 = Math.max(0, reqFlowBlow - cap12);
+        const cap13 = Math.min(335, remB1);
+        c['PC-0013'].fcCmd = cap13 > 0;
+        c['PC-0013'].fcVal = Math.min(100, cap13 / 3.35);
+        const remB2 = Math.max(0, remB1 - cap13);
+        c['PC-0014'].fcCmd = remB2 > 0;
+        c['PC-0014'].fcVal = Math.min(100, remB2 / 3.35);
+      } else {
+        c['PC-0012'].fcCmd = false;
+        c['PC-0013'].fcCmd = false;
+        c['PC-0014'].fcCmd = false;
+      }
+
+      // 6. CÁLCULO DE VAZÕES COMPENSADAS P/T (Fls. 26-28) E CURVAS xytfunc (Fls. 48-77)
+      const corrVSA = Math.max(0, state.headers.vsa.p / 103.0) * Math.sqrt(786.0 / (state.headers.vsa.t + 273.0));
+      const corrVUM = Math.max(0, state.headers.vum.p / 8.5) * Math.sqrt(456.0 / (state.headers.vum.t + 273.0));
+      const corrVUB = Math.max(0, state.headers.vub.p / 4.0) * Math.sqrt(426.0 / (state.headers.vub.t + 273.0));
+
+      ['PC-0012', 'PC-0013', 'PC-0014'].forEach(tag => {
+        const ctrl = c[tag];
+        ctrl.pv = state.headers.vsa.p;
+        stepPID(ctrl, effDt);
+        let mwcAdd = 0;
+        if (tag === 'PC-0012' && state.mwc.selPV0012) mwcAdd = c['MWC-0060'].out;
+        if (tag === 'PC-0013' && state.mwc.selPV0013) mwcAdd = c['MWC-0060'].out;
+        if (tag === 'PC-0014' && state.mwc.selPV0014) mwcAdd = c['MWC-0060'].out;
+
+        const cmdTotal = Math.min(ctrl.maxLim, ctrl.out + mwcAdd);
+        ctrl.valvePos = interpXY(CURVES.blowOff, Math.min(100, cmdTotal));
+        const mCalc = ctrl.factor * ctrl.valvePos;
+        ctrl.flowIn = corrVSA * mCalc;
+        ctrl.flowOut = ctrl.flowIn;
+        ctrl.blocked = ctrl.flowIn < 5.0;
+      });
+
+      ['PC-0034', 'PC-0035'].forEach(tag => {
+        const ctrl = c[tag];
+        ctrl.pv = state.headers.vum.p;
+        stepPID(ctrl, effDt);
+        ctrl.valvePos = interpXY(CURVES.condVUM, Math.min(100, ctrl.out));
+        const mCalc = ctrl.factor * ctrl.valvePos;
+        ctrl.flowIn = corrVSA * mCalc;
+        ctrl.blocked = ctrl.flowIn < 5.0;
+      });
+
+      {
+        const ctrl = c['PC-0036'];
+        ctrl.pv = state.headers.vum.p;
+        stepPID(ctrl, effDt);
+        ctrl.valvePos = interpXY(CURVES.condVUM_VUB, Math.min(100, ctrl.out));
+        const mCalc = ctrl.factor * ctrl.valvePos;
+        ctrl.flowIn = corrVUM * mCalc;
+        ctrl.blocked = ctrl.flowIn < 5.0;
+      }
+
+      ['PC-0037', 'PC-0038', 'PC-0039', 'PC-0040'].forEach(tag => {
+        const ctrl = c[tag];
+        ctrl.pv = state.headers.vub.p;
+        stepPID(ctrl, effDt);
+        let mrAdd = 0;
+        if (tag === 'PC-0037' && state.midRange.selPV0037) mrAdd = state.midRange.output;
+        if (tag === 'PC-0038' && state.midRange.selPV0038) mrAdd = state.midRange.output;
+        if (tag === 'PC-0039' && state.midRange.selPV0039) mrAdd = state.midRange.output;
+
+        const cmdTotal = Math.min(ctrl.maxLim, ctrl.out + mrAdd);
+        ctrl.valvePos = interpXY(CURVES.condVUB, Math.min(100, cmdTotal));
+        const mCalc = ctrl.factor * ctrl.valvePos;
+        ctrl.flowIn = corrVSA * mCalc;
+        ctrl.blocked = ctrl.flowIn < 5.0;
+      });
+
+      ['PC-0060', 'PC-0061'].forEach(tag => {
+        const ctrl = c[tag];
+        ctrl.pv = state.headers.vub.p;
+        stepPID(ctrl, effDt);
+        ctrl.valvePos = interpXY(CURVES.blowOff, Math.min(100, ctrl.out));
+        const mCalc = ctrl.factor * ctrl.valvePos;
+        ctrl.flowIn = corrVUB * mCalc;
+        ctrl.flowOut = ctrl.flowIn;
+        ctrl.blocked = ctrl.flowIn < 5.0;
+      });
+
+      // 7. CONTROLE DE TEMPERATURA E DESSUPERAQUECIMENTO (Fls. 14-28, 53-75)
+      const condPairs = [
+        { pv: 'PV-0034', pc: 'PC-0034', tc: 'TC-0041', targetT: 185, tll: 175, curve: 'sprayStd' },
+        { pv: 'PV-0035', pc: 'PC-0035', tc: 'TC-0042', targetT: 185, tll: 175, curve: 'sprayStd' },
+        { pv: 'PV-0036', pc: 'PC-0036', tc: 'TC-0043', targetT: 155, tll: 152, curve: 'sprayStd' },
+        { pv: 'PV-0037', pc: 'PC-0037', tc: 'TC-0044', targetT: 155, tll: 152, curve: 'sprayStd' },
+        { pv: 'PV-0038', pc: 'PC-0038', tc: 'TC-0045', targetT: 155, tll: 152, curve: 'sprayStd' },
+        { pv: 'PV-0039', pc: 'PC-0039', tc: 'TC-0046', targetT: 155, tll: 152, curve: 'sprayStd' },
+        { pv: 'PV-0040', pc: 'PC-0040', tc: 'TC-0047', targetT: 155, tll: 152, curve: 'spray47' }
+      ];
+
+      condPairs.forEach(item => {
+        const ts = state.tempSensors[item.pv];
+        const pc = c[item.pc];
+        const tc = c[item.tc];
+
+        // Dinâmica Térmica Realista: Se a dessuperaquecedora (spray) for fechada ou insuficiente, a temperatura sobe livremente acima de 300°C
+        let baseTemp = item.targetT;
+        if (ts.highTest) {
+          baseTemp = 325.0;
+        } else if (ts.lowTest) {
+          baseTemp = item.tll - 6.0;
+        } else {
+          const sprayEffect = (tc.valvePos / 100) * 170.0;
+          baseTemp = (item.targetT + 150.0) - sprayEffect;
+        }
+
+        ts.b += (baseTemp - ts.b) * Math.min(1, effDt * 0.7);
+        ts.c += (baseTemp - ts.c) * Math.min(1, effDt * 0.7);
+        ts.a += ((ts.faultA ? baseTemp + 38.0 : baseTemp) - ts.a) * Math.min(1, effDt * 0.7);
+        ts.calc = compute2oo3Temp(ts);
+
+        const isTH = ts.calc >= 270.0;
+        const isTLL = ts.calc <= item.tll;
+
+        // Temporizador de Persistência (TON): Se a temperatura permanecer alta (>=270°C) por mais de 4 segundos contínuos,
+        // o intertravamento de segurança atua fechando totalmente a condicionadora (PC) e a dessuperaquecedora (TC).
+        if (isTH) {
+          ts.highTimer = (ts.highTimer || 0) + effDt;
+          // Quando atinge 270°C, a abertura limite restringe imediatamente a válvula a 10% (ex: 370 t/h -> 37 t/h)
+          ts.thLimit = 10.0;
+        } else {
+          ts.highTimer = Math.max(0, (ts.highTimer || 0) - effDt * 2);
+          if (ts.highTimer === 0) {
+            ts.thLimit = Math.min(105.0, ts.thLimit + 5.0 * effDt);
+          }
+        }
+
+        // Temporizador de retardo (TON) de 600 segundos (10 minutos) antes do fechamento definitivo (0%)
+        const tripTempClosed = (ts.highTimer >= 600.0);
+        if (tripTempClosed) {
+          ts.thLimit = 0.0;
+          tc.maxLim = 0.0;
+        } else {
+          tc.maxLim = isTLL ? 0 : (isTH ? 10.0 : 100);
+        }
+        tc.pv = ts.calc;
+        if (pc.fcCmd) {
+          tc.fcCmd = true;
+          tc.fcVal = pc.fcVal;
+        } else {
+          tc.fcCmd = false;
+        }
+        stepPID(tc, effDt);
+        tc.valvePos = interpXY(CURVES[item.curve], Math.min(100, tc.out));
+        tc.flowIn = (pc.flowIn > 0.5) ? (tc.valvePos / 100) * pc.flowIn * 0.22 : 0;
+        pc.flowOut = pc.flowIn + tc.flowIn;
+      });
+
+      // 8. BALANÇO DE MASSA NOS 3 COLETORES
+      const crBlocked = !state.ov['4405-HV-1342'] && !state.ov['4405-HV-1345'];
+      const cfBlocked = !state.ov['4804-HV-1222'] && !state.ov['4804-HV-1227'];
+      const effCR = crBlocked ? 0 : state.plant.genCR;
+      const effCF = cfBlocked ? 0 : state.plant.genCF;
+
+      const genVSA = effCR + effCF;
+      const consVSA = state.plant.demVSA +
+        t1.admFlow + t2.admFlow + t3.admFlow +
+        c['PC-0012'].flowIn + c['PC-0013'].flowIn + c['PC-0014'].flowIn +
+        c['PC-0034'].flowIn + c['PC-0035'].flowIn +
+        c['PC-0037'].flowIn + c['PC-0038'].flowIn + c['PC-0039'].flowIn + c['PC-0040'].flowIn;
+
+      const netVSA = genVSA - consVSA;
+      state.headers.vsa.p = Math.max(0.0, Math.min(115.0, state.headers.vsa.p + (netVSA * 0.0020 * effDt)));
+      if (genVSA <= 0.1 && consVSA <= 0.1 && state.headers.vsa.p < 0.5) state.headers.vsa.p = 0.0;
+      state.headers.vsa.pCald = state.headers.vsa.p > 0 ? state.headers.vsa.p + 0.25 : 0.0;
+
+      const supVUM = t2.extFlow + t3.extFlow + c['PC-0034'].flowOut + c['PC-0035'].flowOut;
+      const consVUM = state.plant.demVUM + c['PC-0036'].flowIn;
+      const netVUM = supVUM - consVUM;
+      state.headers.vum.p = Math.max(0.0, Math.min(15.0, state.headers.vum.p + (netVUM * 0.0016 * effDt)));
+      if (supVUM <= 0.1 && consVUM <= 0.1 && state.headers.vum.p < 0.2) state.headers.vum.p = 0.0;
+      state.headers.vum.t = (c['PC-0034'].flowIn > 5) ? state.tempSensors['PV-0034'].calc : (state.headers.vum.p > 0.1 ? 185.0 : 25.0);
+
+      const supVUB = t1.extFlow + t2.escFlow + c['PC-0036'].flowOut +
+        c['PC-0037'].flowOut + c['PC-0038'].flowOut + c['PC-0039'].flowOut + c['PC-0040'].flowOut;
+      const consVUB = state.plant.demVUB + c['PC-0060'].flowIn + c['PC-0061'].flowIn;
+      const netVUB = supVUB - consVUB;
+      state.headers.vub.p = Math.max(0.0, Math.min(8.0, state.headers.vub.p + (netVUB * 0.0014 * effDt)));
+      if (supVUB <= 0.1 && consVUB <= 0.1 && state.headers.vub.p < 0.2) state.headers.vub.p = 0.0;
+      state.headers.vub.t = (c['PC-0040'].flowIn > 5) ? state.tempSensors['PV-0040'].calc : (state.headers.vub.p > 0.1 ? 155.0 : 25.0);
+
+      state.massSummary = { genVSA, consVSA, supVUM, consVUM, supVUB, consVUB };
+
+      // 9. BALANÇO DE POTÊNCIA E CONTROLE MWC-0060 (Fls. 30-31, 43-46)
+      const totalGenMW = t1.mw + t2.mw + t3.mw;
+      state.grid.mwExportInst = state.grid.islanded ? 0.0 : Math.max(0, totalGenMW - state.plant.loadMW);
+      state.grid.mwExportFiltered += (state.grid.mwExportInst - state.grid.mwExportFiltered) * Math.min(1, effDt * 0.5);
+
+      const mwc = state.mwc;
+      mwc.timeSec += effDt;
+      mwc.integrator += (state.grid.mwExportInst * effDt) / 300.0;
+      if (mwc.timeSec >= 300) {
+        const lastProj = mwc.mwAvg;
+        if (mwc.interval === 1) {
+          mwc.proj1 = lastProj;
+          mwc.metaCorrigida = 2 * mwc.metaInicial - mwc.proj1;
+          mwc.interval = 2;
+        } else if (mwc.interval === 2) {
+          mwc.proj2 = lastProj;
+          mwc.metaCorrigida = 3 * mwc.metaInicial - (mwc.proj1 + mwc.proj2);
+          mwc.interval = 3;
+        } else {
+          mwc.interval = 1;
+          mwc.metaCorrigida = mwc.metaInicial;
+        }
+        mwc.metaCorrigida = Math.max(mwc.metaInicial - 3, Math.min(mwc.metaInicial + 2, mwc.metaCorrigida));
+        mwc.timeSec = 0;
+        mwc.integrator = 0;
+      }
+
+      const elapsed = Math.max(1, mwc.timeSec);
+      mwc.mwAvg = (mwc.integrator * 300.0) / elapsed;
+      mwc.mwProj = ((mwc.integrator * 300.0) + (300.0 - mwc.timeSec) * state.grid.mwExportInst) / 300.0;
+
+      const mwcCtrl = c['MWC-0060'];
+      const tempoParada = Math.max(1, 300.0 - mwc.timeSec);
+      const spTargetMWC = (mwc.timeSec > 30 && mwc.timeSec < 270)
+        ? Math.max(0, (mwc.metaCorrigida * 300 - mwc.mwAvg * mwc.timeSec) / tempoParada)
+        : mwc.metaCorrigida;
+      mwcCtrl.spR += (spTargetMWC - mwcCtrl.spR) * Math.min(1, 0.3 * effDt);
+      mwcCtrl.pv = state.grid.mwExportInst;
+      const anyBlowSel = mwc.selPV0012 || mwc.selPV0013 || mwc.selPV0014;
+      mwcCtrl.maxLim = (anyBlowSel && !state.grid.islanded) ? 100 : 0;
+      stepPID(mwcCtrl, effDt);
+    }
+
+    // ==================== AÇÕES DE INTERAÇÃO DO OPERADOR ====================
+    function setSimSpeed(spd) {
+      simSpeed = spd;
+      [0, 1, 5, 20].forEach(s => {
+        const btn = document.getElementById(`spd-${s}`);
+        btn.className = s === spd
+          ? 'px-2 py-1 text-xs mono rounded bg-sky-600 text-white font-bold'
+          : 'px-2 py-1 text-xs mono rounded hover:bg-slate-700 text-slate-300';
+      });
+      document.getElementById('sim-status-dot').className = spd === 0
+        ? 'w-2.5 h-2.5 rounded-full bg-amber-400'
+        : 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+    }
+
+    function switchTab(tabId) {
+      ['synoptic', 'cascades', 'trips'].forEach(id => {
+        document.getElementById(`view-${id}`).classList.toggle('hidden', id !== tabId);
+        const btn = document.getElementById(`tab-${id}`);
+        btn.className = id === tabId
+          ? 'tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-sky-600/20 text-sky-400 border border-sky-500/40 flex items-center gap-1.5 whitespace-nowrap'
+          : 'tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center gap-1.5 whitespace-nowrap';
+      });
+      if (tabId === 'synoptic') drawAllCharts();
+    }
+
+    function toggleOV(tag) {
+      state.ov[tag] = !state.ov[tag];
+      logEvent(`Válvula ${tag} comandada para ${state.ov[tag] ? 'ABERTA (ZSO=1)' : 'FECHADA (ZSL=1)'}.`);
+    }
+
+    function setTurbineLoad(tKey, val) {
+      state.turbines[tKey].targetAdm = parseFloat(val);
+    }
+
+    function toggleTurbineCtrl(tKey, prop) {
+      state.turbines[tKey][prop] = !state.turbines[tKey][prop];
+      logEvent(`${tKey.toUpperCase()}: Controle ${prop} alterado para ${state.turbines[tKey][prop] ? 'AUTO (1)' : 'MANUAL (0)'}.`);
+      if (activeTurbineModal === tKey) renderTurbineModalContent(tKey);
+    }
+
+    function toggleBreaker(tKey) {
+      const t = state.turbines[tKey];
+      t.breakerClosed = !t.breakerClosed;
+      if (!t.breakerClosed) {
+        triggerTurbineTrip(tKey, true);
+      } else {
+        t.tripped = false;
+        logEvent(`Disjuntor ${tKey.toUpperCase()} FECHADO e sincronizado.`);
+      }
+      if (activeTurbineModal === tKey) renderTurbineModalContent(tKey);
+    }
+
+    function triggerTurbineTrip(tKey, fromBreaker = false) {
+      const t = state.turbines[tKey];
+      t.tripped = true;
+      t.breakerClosed = false;
+      t.tripPulseTimer = 1.8; // Pulso exato de 1.8s (Fls. 35-37)
+
+      if (tKey === 'tg1') {
+        t.tripFlowVUB = t.extFlowFiltered / 1.30;
+        t.tripFlowBlow = Math.max(0, t.admFlowFiltered - t.tripFlowVUB);
+      } else if (tKey === 'tg2') {
+        t.tripFlowVUM = t.extFlowFiltered / 1.28;
+        t.tripFlowVUB = t.escFlowFiltered / 1.30;
+        t.tripFlowBlow = Math.max(0, t.admFlowFiltered - t.tripFlowVUM - t.tripFlowVUB);
+      } else if (tKey === 'tg3') {
+        t.tripFlowVUM = t.extFlowFiltered / 1.28;
+        const sangCorr = t.sangFlowFiltered / 1.13;
+        t.tripFlowBlow = Math.max(0, t.admFlowFiltered - sangCorr - t.tripFlowVUM);
+      }
+      logEvent(`⚠️ TRIP ${tKey.toUpperCase()} (${fromBreaker ? 'Abertura Disjuntor' : 'Proteção Braun'})! Pulso 1.8s de abertura rápida ativado.`);
+    }
+
+    function triggerGridTrip() {
+      state.grid.islanded = !state.grid.islanded;
+      if (state.grid.islanded) {
+        const expMW = state.grid.mwExportFiltered;
+        if (expMW > 50.0) {
+          state.grid.tripPulseTimer = 1.8;
+          const totalMW = state.turbines.tg1.mw + state.turbines.tg2.mw + state.turbines.tg3.mw + 0.01;
+          const f1 = (state.turbines.tg1.mw / totalMW) * expMW * 3.0;
+          const f2 = (state.turbines.tg2.mw / totalMW) * expMW * 5.0;
+          const f3 = (state.turbines.tg3.mw / totalMW) * expMW * 3.0;
+          state.grid.tripFlowVUB = (f1 * 0.23) / 1.3;
+          state.grid.tripFlowBlow = f1 + f2 + f3;
+        }
+        logEvent(`⚡ TRIP CONCESSIONÁRIA (1 = ILHA)! Exportação zerada (${expMW.toFixed(1)} MW rejeitados).`);
+      } else {
+        logEvent(`Rede Concessionária reconectada (Modo Paralelo).`);
+      }
+    }
+
+    function clearAllTrips() {
+      ['tg1', 'tg2', 'tg3'].forEach(k => {
+        state.turbines[k].tripped = false;
+        state.turbines[k].breakerClosed = true;
+        state.turbines[k].tripPulseTimer = 0;
+      });
+      state.grid.islanded = false;
+      state.grid.tripPulseTimer = 0;
+      logEvent(`Condições de Trip resetadas e turbogeradores rearmados.`);
+    }
+
+    function toggleMidRangeSel(pvTag) {
+      const key = 'sel' + pvTag.replace('-', '');
+      state.midRange[key] = !state.midRange[key];
+      logEvent(`Mid-Range PC-0040 para ${pvTag}: ${state.midRange[key] ? 'LIGADO' : 'DESLIGADO'}.`);
+    }
+
+    function toggleMwcBlowoff(pvTag) {
+      const key = 'sel' + pvTag.replace('-', '');
+      state.mwc[key] = !state.mwc[key];
+      logEvent(`MWC-0060 Seleção Blow-Off ${pvTag}: ${state.mwc[key] ? 'LIGADO' : 'DESLIGADO'}.`);
+    }
+
+    function resetDemandPeriod() {
+      state.mwc.timeSec = 0;
+      state.mwc.interval = 1;
+      state.mwc.integrator = 0;
+      state.mwc.metaCorrigida = state.mwc.metaInicial;
+      logEvent(`Pulso ZX-4004: Novo período de medição de demanda (15 min) iniciado.`);
+    }
+
+    function toggleTempTest(pvTag, type) {
+      const ts = state.tempSensors[pvTag];
+      if (type === 'faultA') ts.faultA = !ts.faultA;
+      if (type === 'highTest') { ts.highTest = !ts.highTest; if (ts.highTest) ts.lowTest = false; }
+      if (type === 'lowTest') { ts.lowTest = !ts.lowTest; if (ts.lowTest) ts.highTest = false; }
+      logEvent(`Teste térmico ${pvTag} (${ts.tag}): ${type} = ${ts[type]}.`);
+      renderTempVotingCards();
+    }
+
+    function resetNominal() {
+      state.headers.vsa.p = 98.50; state.headers.vsa.t = 513.0;
+      state.headers.vum.p = 8.50; state.headers.vum.t = 185.0;
+      state.headers.vub.p = 4.00; state.headers.vub.t = 155.0;
+      state.baseSP.vsa = 98.50; state.baseSP.vum = 8.50; state.baseSP.vub = 4.00;
+      state.plant = { genCR: 675, genCF: 250, demVSA: 15, demVUM: 340, demVUB: 250, loadMW: 45 };
+
+      document.getElementById('rng-gen-cr').value = 675;
+      document.getElementById('rng-gen-cf').value = 250;
+      document.getElementById('rng-dem-vsa').value = 15;
+      document.getElementById('rng-dem-vum').value = 340;
+      document.getElementById('rng-dem-vub').value = 250;
+      document.getElementById('rng-load-mw').value = 45;
+      document.getElementById('rng-base-vsa').value = 98.5;
+      document.getElementById('rng-base-vum').value = 8.50;
+      document.getElementById('rng-base-vub').value = 4.00;
+
+      Object.keys(state.ov).forEach(k => state.ov[k] = true);
+      clearAllTrips();
+
+      state.turbines.tg1.targetAdm = 290; state.turbines.tg1.admFlow = 290; state.turbines.tg1.extFlow = 120;
+      state.turbines.tg1.spAdm = 98.5; state.turbines.tg1.spExt = 4.0;
+      document.getElementById('rng-tg1-load').value = 290;
+      document.getElementById('rng-tg1-spAdm').value = 98.5;
+      document.getElementById('rng-tg1-spExt').value = 4.0;
+
+      state.turbines.tg2.targetAdm = 300; state.turbines.tg2.admFlow = 300; state.turbines.tg2.extFlow = 170; state.turbines.tg2.escFlow = 130;
+      state.turbines.tg2.spExt = 8.5; state.turbines.tg2.spEsc = 4.0;
+      document.getElementById('rng-tg2-load').value = 300;
+      document.getElementById('rng-tg2-spExt').value = 8.5;
+      document.getElementById('rng-tg2-spEsc').value = 4.0;
+
+      state.turbines.tg3.targetAdm = 320; state.turbines.tg3.admFlow = 320; state.turbines.tg3.extFlow = 170; state.turbines.tg3.sangFlow = 22.4;
+      state.turbines.tg3.spAdm = 98.5; state.turbines.tg3.spExt = 8.5;
+      document.getElementById('rng-tg3-load').value = 320;
+      document.getElementById('rng-tg3-spAdm').value = 98.5;
+      document.getElementById('rng-tg3-spExt').value = 8.5;
+
+      Object.values(state.tempSensors).forEach(ts => {
+        ts.faultA = false; ts.highTest = false; ts.lowTest = false; ts.thLimit = 105;
+      });
+      Object.values(state.controllers).forEach(ctrl => {
+        ctrl.mode = 'AUTO';
+        ctrl.spRemote = true;
+        ctrl.fcCmd = false;
+        ctrl.integral = 0;
+        ctrl.out = 0;
+      });
+      state.midRange.output = 0;
+      state.midRange.active = false;
+      renderTempVotingCards();
+      logEvent(`Equilíbrio nominal restaurado (t = 0s) em todas as malhas e equipamentos.`);
+    }
+
+    // ==================== MODAL TCS DA TURBINA ====================
+    function openTurbineModal(tKey) {
+      activeTurbineModal = tKey;
+      renderTurbineModalContent(tKey);
+      const modal = document.getElementById('turbine-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeTurbineModal() {
+      activeTurbineModal = null;
+      const modal = document.getElementById('turbine-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderTurbineModalContent(tKey) {
+      const t = state.turbines[tKey];
+      const names = {
+        tg1: ['TG-1 — PROFINET TCS', 'Condensação + Extração VUB (Fl. 29)'],
+        tg2: ['TG-2 — PROFINET TCS', 'Contrapressão: Extração VUM + Escape VUB (Fl. 29)'],
+        tg3: ['TG-3 — PROFINET TCS', 'Condensação + Extração VUM + Sangria FI-3023 (Fl. 29)']
+      };
+      document.getElementById('tm-title').textContent = names[tKey][0];
+      document.getElementById('tm-subtitle').textContent = names[tKey][1];
+
+      let html = `
+        <div class="flex items-center justify-between bg-[#0a0f19] p-3 rounded border border-slate-800">
+          <span class="font-bold text-slate-200">Status Disjuntor &amp; Operação:</span>
+          <div class="flex gap-2">
+            <button onclick="toggleBreaker('${tKey}')" class="px-2.5 py-1 rounded mono font-bold ${t.breakerClosed ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">${t.breakerClosed ? 'DISJ. FECHADO' : 'DISJ. ABERTO'}</button>
+            <button onclick="triggerTurbineTrip('${tKey}')" class="px-2.5 py-1 rounded mono font-bold bg-red-700 hover:bg-red-600 text-white">TRIP</button>
+          </div>
+        </div>
+      `;
+
+      if (tKey === 'tg1') {
+        html += `
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG1-5051XS0030 (Pr. Admissão AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg1','admAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.admAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.admAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG1-5051XS0210C (Pr. Extração AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg1','extAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.extAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Admissão PY0030 (VSA):</span><b class="mono text-red-400">${t.spAdm.toFixed(2)} bar</b></div>
+            <input type="number" min="93" max="103" step="0.1" value="${t.spAdm}" onchange="state.turbines.tg1.spAdm=parseFloat(this.value)||0; renderTurbineModalContent('tg1')" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Extração PY0210A (VUB):</span><b class="mono text-cyan-400">${t.spExt.toFixed(2)} bar</b></div>
+            <input type="number" min="3.0" max="6.0" step="0.05" value="${t.spExt}" onchange="state.turbines.tg1.spExt=parseFloat(this.value)||0; renderTurbineModalContent('tg1')" class="w-full">
+          </div>
+        `;
+      } else if (tKey === 'tg2') {
+        html += `
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG2-5052XS0210C (Pr. Extração AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg2','extAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.extAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG2-5052XS0040C (Pr. Escape AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg2','escAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.escAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.escAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Extração PY0210A (VUM):</span><b class="mono text-amber-400">${t.spExt.toFixed(2)} bar</b></div>
+            <input type="number" min="7.0" max="11.0" step="0.05" value="${t.spExt}" onchange="state.turbines.tg2.spExt=parseFloat(this.value)||0; renderTurbineModalContent('tg2')" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Escape XY0040 (VUB):</span><b class="mono text-cyan-400">${t.spEsc.toFixed(2)} bar</b></div>
+            <input type="number" min="3.0" max="6.0" step="0.05" value="${t.spEsc}" onchange="state.turbines.tg2.spEsc=parseFloat(this.value)||0; renderTurbineModalContent('tg2')" class="w-full">
+          </div>
+        `;
+      } else if (tKey === 'tg3') {
+        html += `
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG3-5053XS0030 (Pr. Admissão AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg3','admAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.admAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.admAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="flex justify-between items-center bg-[#151e2e] p-2.5 rounded">
+            <span>TG3-5053XS0210C (Pr. Extração AUTO):</span>
+            <button onclick="toggleTurbineCtrl('tg3','extAuto')" class="px-2.5 py-1 rounded mono font-bold ${t.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}">${t.extAuto ? 'AUTO (1)' : 'MAN (0)'}</button>
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Admissão PY0030 (VSA):</span><b class="mono text-red-400">${t.spAdm.toFixed(2)} bar</b></div>
+            <input type="number" min="93" max="103" step="0.1" value="${t.spAdm}" onchange="state.turbines.tg3.spAdm=parseFloat(this.value)||0; renderTurbineModalContent('tg3')" class="w-full">
+          </div>
+          <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+            <div class="flex justify-between mb-1"><span>SP Extração PY0210A (VUM):</span><b class="mono text-amber-400">${t.spExt.toFixed(2)} bar</b></div>
+            <input type="number" min="7.0" max="11.0" step="0.05" value="${t.spExt}" onchange="state.turbines.tg3.spExt=parseFloat(this.value)||0; renderTurbineModalContent('tg3')" class="w-full">
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="bg-[#0a0f19] p-2.5 rounded border border-slate-800">
+          <div class="flex justify-between mb-1"><span>Demanda Base Admissão:</span><b class="mono text-white">${t.targetAdm.toFixed(0)} t/h</b></div>
+          <input type="number" min="0" max="1080" step="5" value="${t.targetAdm}" onchange="setTurbineLoad('${tKey}', this.value); renderTurbineModalContent('${tKey}')" class="w-full">
+        </div>
+      `;
+      document.getElementById('tm-body').innerHTML = html;
+    }
+
+    // ==================== FACEPLATE DE CONTROLADORES ====================
+    function openFaceplate(tag) {
+      activeFaceplateTag = tag;
+      const ctrl = state.controllers[tag];
+      if (!ctrl) return;
+      document.getElementById('fp-tag').textContent = tag;
+      document.getElementById('fp-desc').textContent = ctrl.desc;
+      document.getElementById('fp-unit').textContent = ctrl.unit;
+      document.getElementById('fp-unit2').textContent = ctrl.unit;
+
+      const spSlider = document.getElementById('fp-sp-slider');
+      spSlider.min = ctrl.min;
+      spSlider.max = ctrl.max;
+      spSlider.step = ctrl.unit === 'bar' ? 0.05 : 1;
+      spSlider.value = ctrl.spLocal;
+
+      document.getElementById('fp-man-slider').value = ctrl.out;
+      document.getElementById('fp-kp-input').value = ctrl.kp;
+      document.getElementById('fp-ti-input').value = ctrl.ti;
+
+      syncFaceplateUI();
+      const modal = document.getElementById('faceplate-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeFaceplate() {
+      activeFaceplateTag = null;
+      const modal = document.getElementById('faceplate-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function setFpMode(m) {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      ctrl.mode = m;
+      if (m === 'MAN') ctrl.manOut = ctrl.out;
+      logEvent(`${activeFaceplateTag}: Modo alterado para ${m}.`);
+      syncFaceplateUI();
+    }
+
+    function setFpSpMode(isRemote) {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      ctrl.spRemote = isRemote;
+      logEvent(`${activeFaceplateTag}: Setpoint alterado para ${isRemote ? 'REMOTO (spR)' : 'LOCAL'}.`);
+      syncFaceplateUI();
+    }
+
+    function updateFpLocalSp(val) {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      ctrl.spLocal = parseFloat(val);
+      ctrl.spRemote = false;
+      syncFaceplateUI();
+    }
+
+    function updateFpManualOut(val) {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      ctrl.mode = 'MAN';
+      ctrl.manOut = parseFloat(val);
+      syncFaceplateUI();
+    }
+
+    function updateFpTuning() {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      ctrl.kp = parseFloat(document.getElementById('fp-kp-input').value) || ctrl.kp;
+      ctrl.ti = parseFloat(document.getElementById('fp-ti-input').value) || ctrl.ti;
+      logEvent(`${activeFaceplateTag}: Sintonia atualizada (Kp=${ctrl.kp}, Ti=${ctrl.ti}s).`);
+    }
+
+    function syncFaceplateUI() {
+      if (!activeFaceplateTag) return;
+      const ctrl = state.controllers[activeFaceplateTag];
+      const sp = ctrl.spRemote ? ctrl.spR : ctrl.spLocal;
+      document.getElementById('fp-pv').textContent = ctrl.pv.toFixed(2);
+      document.getElementById('fp-sp').textContent = sp.toFixed(2);
+      document.getElementById('fp-out').textContent = ctrl.out.toFixed(1) + '%';
+      document.getElementById('fp-valve-pos').textContent = ctrl.valvePos.toFixed(1) + '%';
+      document.getElementById('fp-sp-local-lbl').textContent = ctrl.spLocal.toFixed(2) + ' ' + ctrl.unit;
+      document.getElementById('fp-man-lbl').textContent = (ctrl.mode === 'MAN' ? ctrl.manOut : ctrl.out).toFixed(1) + '%';
+      document.getElementById('fp-maxlim').textContent = ctrl.maxLim.toFixed(0) + '%';
+
+      document.getElementById('fp-btn-auto').className = ctrl.mode === 'AUTO'
+        ? 'py-1.5 rounded font-bold bg-sky-600 text-white'
+        : 'py-1.5 rounded font-bold bg-slate-800 text-slate-400';
+      document.getElementById('fp-btn-man').className = ctrl.mode === 'MAN'
+        ? 'py-1.5 rounded font-bold bg-amber-600 text-white'
+        : 'py-1.5 rounded font-bold bg-slate-800 text-slate-400';
+
+      document.getElementById('fp-btn-rem').className = ctrl.spRemote
+        ? 'py-1.5 rounded font-bold bg-emerald-600 text-white'
+        : 'py-1.5 rounded font-bold bg-slate-800 text-slate-400';
+      document.getElementById('fp-btn-loc').className = !ctrl.spRemote
+        ? 'py-1.5 rounded font-bold bg-sky-600 text-white'
+        : 'py-1.5 rounded font-bold bg-slate-800 text-slate-400';
+
+      const ilStatus = document.getElementById('fp-interlock-status');
+      if (ctrl.fcCmd) {
+        ilStatus.textContent = 'FORÇADO POR TRIP';
+        ilStatus.className = 'text-red-400 font-bold alarm-blink';
+      } else if (ctrl.maxLim <= 0) {
+        ilStatus.textContent = 'BLOQUEADO (OV / TLL)';
+        ilStatus.className = 'text-red-400 font-bold';
+      } else if (ctrl.maxLim < 100) {
+        ilStatus.textContent = 'LIMITADO POR TH';
+        ilStatus.className = 'text-amber-400 font-bold';
+      } else {
+        ilStatus.textContent = 'LIBERADO';
+        ilStatus.className = 'text-emerald-400 font-bold';
+      }
+    }
+
+    // ==================== RENDERIZAÇÃO DA INTERFACE ====================
+    function renderTempVotingCards() {
+      const grid = document.getElementById('temp-voting-grid');
+      if (!grid) return;
+      grid.innerHTML = Object.entries(state.tempSensors).map(([pvTag, ts]) => {
+        const isVUM = pvTag === 'PV-0034' || pvTag === 'PV-0035';
+        const tll = isVUM ? 175 : 152;
+        return `
+          <div class="bg-[#0a0f19] p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+              <span class="font-bold text-slate-200">${pvTag} (${ts.tag})</span>
+              <span class="mono font-bold text-amber-300" id="tv-calc-${pvTag}">${ts.calc.toFixed(1)}°C</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1 text-center mono text-[10px] text-slate-400">
+              <div class="bg-[#101724] p-1 rounded">A: <b class="text-slate-200" id="tv-a-${pvTag}">${ts.a.toFixed(0)}</b></div>
+              <div class="bg-[#101724] p-1 rounded">B: <b class="text-slate-200" id="tv-b-${pvTag}">${ts.b.toFixed(0)}</b></div>
+              <div class="bg-[#101724] p-1 rounded">C: <b class="text-slate-200" id="tv-c-${pvTag}">${ts.c.toFixed(0)}</b></div>
+            </div>
+            <div class="flex flex-wrap gap-1 pt-1">
+              <button onclick="toggleTempTest('${pvTag}','faultA')" class="px-1.5 py-0.5 rounded text-[10px] mono border ${ts.faultA ? 'bg-amber-600 text-white border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700'}">Desvio TT-A</button>
+              <button onclick="toggleTempTest('${pvTag}','highTest')" class="px-1.5 py-0.5 rounded text-[10px] mono border ${ts.highTest ? 'bg-red-600 text-white border-red-400' : 'bg-slate-800 text-slate-300 border-slate-700'}">TH &gt;270°C</button>
+              <button onclick="toggleTempTest('${pvTag}','lowTest')" class="px-1.5 py-0.5 rounded text-[10px] mono border ${ts.lowTest ? 'bg-cyan-600 text-white border-cyan-400' : 'bg-slate-800 text-slate-300 border-slate-700'}">TLL &lt;${tll}°C</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateUI() {
+      const h = state.headers;
+      const c = state.controllers;
+
+      document.getElementById('hdr-p-vsa').textContent = h.vsa.p.toFixed(2);
+      document.getElementById('hdr-t-vsa').textContent = h.vsa.t.toFixed(0) + '°C';
+      document.getElementById('hdr-p-vum').textContent = h.vum.p.toFixed(2);
+      document.getElementById('hdr-t-vum').textContent = h.vum.t.toFixed(0) + '°C';
+      document.getElementById('hdr-p-vub').textContent = h.vub.p.toFixed(2);
+      document.getElementById('hdr-t-vub').textContent = h.vub.t.toFixed(0) + '°C';
+      document.getElementById('hdr-mw-exp').textContent = state.grid.mwExportInst.toFixed(1);
+
+      document.getElementById('lbl-gen-cr').textContent = state.plant.genCR + ' t/h';
+      document.getElementById('lbl-gen-cf').textContent = state.plant.genCF + ' t/h';
+      document.getElementById('lbl-dem-vsa').textContent = state.plant.demVSA + ' t/h';
+      document.getElementById('lbl-dem-vum').textContent = state.plant.demVUM + ' t/h';
+      document.getElementById('lbl-dem-vub').textContent = state.plant.demVUB + ' t/h';
+      document.getElementById('lbl-load-mw').textContent = state.plant.loadMW + ' MW';
+
+      // SVG Sinóptico
+      const crBlocked = !state.ov['4405-HV-1342'] && !state.ov['4405-HV-1345'];
+      const cfBlocked = !state.ov['4804-HV-1222'] && !state.ov['4804-HV-1227'];
+      document.getElementById('svg-flow-cr').textContent = (crBlocked ? 0 : state.plant.genCR).toFixed(1) + ' t/h';
+      document.getElementById('svg-flow-cf').textContent = (cfBlocked ? 0 : state.plant.genCF).toFixed(1) + ' t/h';
+      document.getElementById('svg-pt0100').textContent = `${h.vsa.pCald.toFixed(1)}b | ${h.vsa.tCald.toFixed(0)}°C`;
+      document.getElementById('svg-p-vsa').textContent = h.vsa.p.toFixed(2) + ' bar';
+      document.getElementById('svg-t-vsa').textContent = h.vsa.t.toFixed(1) + ' °C';
+      document.getElementById('svg-p-vum').textContent = h.vum.p.toFixed(2) + ' bar';
+      document.getElementById('svg-t-vum').textContent = h.vum.t.toFixed(1) + ' °C';
+      document.getElementById('svg-p-vub').textContent = h.vub.p.toFixed(2) + ' bar';
+      document.getElementById('svg-t-vub').textContent = h.vub.t.toFixed(1) + ' °C';
+
+      if (state.massSummary) {
+        const ms = state.massSummary;
+        document.getElementById('svg-mass-summary').textContent =
+          `VSA: ${ms.genVSA.toFixed(0)}/${ms.consVSA.toFixed(0)} t/h | VUM: ${ms.supVUM.toFixed(0)}/${ms.consVUM.toFixed(0)} t/h | VUB: ${ms.supVUB.toFixed(0)}/${ms.consVUB.toFixed(0)} t/h`;
+      }
+
+      Object.entries(state.ov).forEach(([tag, isOpen]) => {
+        const box = document.getElementById(`ov-box-${tag}`);
+        const txt = document.getElementById(`ov-txt-${tag}`);
+        if (box && txt) {
+          box.setAttribute('stroke', isOpen ? '#10b981' : '#ef4444');
+          box.setAttribute('fill', isOpen ? '#0f172a' : '#450a0a');
+          txt.setAttribute('fill', isOpen ? '#10b981' : '#fca5a5');
+        }
+      });
+
+      const pvMap = [
+        { pv: 'PV-0012', pc: 'PC-0012' }, { pv: 'PV-0013', pc: 'PC-0013' }, { pv: 'PV-0014', pc: 'PC-0014' },
+        { pv: 'PV-0034', pc: 'PC-0034', tc: 'TC-0041' }, { pv: 'PV-0035', pc: 'PC-0035', tc: 'TC-0042' },
+        { pv: 'PV-0036', pc: 'PC-0036', tc: 'TC-0043' },
+        { pv: 'PV-0037', pc: 'PC-0037', tc: 'TC-0044' }, { pv: 'PV-0038', pc: 'PC-0038', tc: 'TC-0045' },
+        { pv: 'PV-0039', pc: 'PC-0039', tc: 'TC-0046' }, { pv: 'PV-0040', pc: 'PC-0040', tc: 'TC-0047' },
+        { pv: 'PV-0060', pc: 'PC-0060' }, { pv: 'PV-0061', pc: 'PC-0061' }
+      ];
+      pvMap.forEach(m => {
+        const ctrl = c[m.pc];
+        const posEl = document.getElementById(`svg-pos-${m.pv}`);
+        const flwEl = document.getElementById(`svg-flow-${m.pv}`);
+        if (posEl) posEl.textContent = ctrl.valvePos.toFixed(1) + '%';
+        if (flwEl) flwEl.textContent = ctrl.flowOut.toFixed(1) + ' t/h';
+        if (m.tc) {
+          const ts = state.tempSensors[m.pv];
+          const tc = c[m.tc];
+          const tEl = document.getElementById(`svg-temp-${ts.tag}`);
+          const tvEl = document.getElementById(`svg-tv-${m.tc.replace('TC', 'TV')}`);
+          if (tEl) tEl.textContent = `${ts.tag.replace('TT-00', 'TY')}: ${ts.calc.toFixed(0)}°C`;
+          if (tvEl) tvEl.textContent = `${m.tc.replace('TC-00', 'TV')}: ${tc.valvePos.toFixed(0)}%`;
+        }
+      });
+
+      document.getElementById('svg-midrange').textContent = state.midRange.output.toFixed(1) + '%';
+      document.getElementById('svg-mwc-sp').textContent = c['MWC-0060'].spR.toFixed(1);
+      document.getElementById('svg-mwc-out').textContent = c['MWC-0060'].out.toFixed(1) + '%';
+      const activeBlows = ['PV-0012', 'PV-0013', 'PV-0014'].filter(k => state.mwc['sel' + k.replace('-', '')]);
+      document.getElementById('svg-mwc-sel').textContent = 'SEL: ' + (activeBlows.length ? activeBlows.join(',') : 'NENHUMA');
+
+      const { tg1, tg2, tg3 } = state.turbines;
+      document.getElementById('svg-tg1-adm').textContent = tg1.admFlow.toFixed(0);
+      document.getElementById('svg-tg1-mw').textContent = tg1.mw.toFixed(0) + ' MW';
+      document.getElementById('svg-tg1-pos').textContent = tg1.valvePos.toFixed(0) + '%';
+      document.getElementById('svg-tg1-ye').textContent = tg1.yePos.toFixed(0) + '%';
+      document.getElementById('svg-tg1-cond').textContent = tg1.condFlow.toFixed(0) + ' t/h';
+      document.getElementById('svg-tg1-ext').textContent = tg1.extFlow.toFixed(0);
+      document.getElementById('svg-tg1-sr').textContent = tg1.spinRes.toFixed(1) + ' MW';
+      document.getElementById('svg-tg1-mode').textContent = `TCS: ADM ${tg1.admAuto ? 'AUTO' : 'MAN'} | EXT ${tg1.extAuto ? 'AUTO' : 'MAN'}`;
+
+      document.getElementById('svg-tg2-adm').textContent = tg2.admFlow.toFixed(0);
+      document.getElementById('svg-tg2-mw').textContent = tg2.mw.toFixed(0) + ' MW';
+      document.getElementById('svg-tg2-pos').textContent = tg2.valvePos.toFixed(0) + '%';
+      document.getElementById('svg-tg2-ye').textContent = tg2.yePos.toFixed(0) + '%';
+      document.getElementById('svg-tg2-ext').textContent = tg2.extFlow.toFixed(0);
+      document.getElementById('svg-tg2-ext-txt').textContent = tg2.extFlow.toFixed(0) + ' t/h';
+      document.getElementById('svg-tg2-esc').textContent = tg2.escFlow.toFixed(0);
+      document.getElementById('svg-tg2-sr').textContent = tg2.spinRes.toFixed(1) + ' MW';
+      document.getElementById('svg-tg2-mode').textContent = `TCS: EXT ${tg2.extAuto ? 'AUTO' : 'MAN'} | ESC ${tg2.escAuto ? 'AUTO' : 'MAN'}`;
+
+      document.getElementById('svg-tg3-adm').textContent = tg3.admFlow.toFixed(0);
+      document.getElementById('svg-tg3-mw').textContent = tg3.mw.toFixed(0) + ' MW';
+      document.getElementById('svg-tg3-pos').textContent = tg3.valvePos.toFixed(0) + '%';
+      document.getElementById('svg-tg3-ye').textContent = tg3.yePos.toFixed(0) + '%';
+      document.getElementById('svg-tg3-cond').textContent = tg3.condFlow.toFixed(0);
+      document.getElementById('svg-tg3-sang').textContent = tg3.sangFlow.toFixed(0) + ' t/h';
+      document.getElementById('svg-tg3-ext').textContent = tg3.extFlow.toFixed(0);
+      document.getElementById('svg-tg3-sr').textContent = tg3.spinRes.toFixed(1) + ' MW';
+      document.getElementById('svg-tg3-mode').textContent = `TCS: ADM ${tg3.admAuto ? 'AUTO' : 'MAN'} | EXT ${tg3.extAuto ? 'AUTO' : 'MAN'}`;
+
+      ['tg1', 'tg2', 'tg3'].forEach(k => {
+        const t = state.turbines[k];
+        const isRun = !t.tripped && t.breakerClosed;
+        document.getElementById(`dot-${k}`).className = isRun ? 'w-3 h-3 rounded-full bg-emerald-500' : 'w-3 h-3 rounded-full bg-red-500 alarm-blink';
+        const brkBtn = document.getElementById(`btn-brk-${k}`);
+        brkBtn.textContent = t.breakerClosed ? 'DISJ: FECHADO' : 'DISJ: ABERTO';
+        brkBtn.className = t.breakerClosed
+          ? 'px-2 py-0.5 text-[11px] mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+          : 'px-2 py-0.5 text-[11px] mono rounded bg-red-500/20 text-red-300 border border-red-500/40 font-bold';
+        document.getElementById(`card-${k}-adm`).textContent = t.admFlow.toFixed(1) + ' t/h';
+        document.getElementById(`card-${k}-mw`).textContent = t.mw.toFixed(1) + ' MW';
+        document.getElementById(`lbl-${k}-load`).textContent = t.targetAdm + ' t/h';
+        document.getElementById(`sr-detail-${k}`).textContent = t.spinRes.toFixed(2) + ' MW';
+      });
+
+      document.getElementById('btn-tg1-admAuto').textContent = tg1.admAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg1-admAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg1.admAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('btn-tg1-extAuto').textContent = tg1.extAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg1-extAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg1.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('lbl-tg1-spAdm').textContent = tg1.spAdm.toFixed(2) + ' bar';
+      document.getElementById('lbl-tg1-spExt').textContent = tg1.spExt.toFixed(2) + ' bar';
+
+      document.getElementById('btn-tg2-extAuto').textContent = tg2.extAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg2-extAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg2.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('btn-tg2-escAuto').textContent = tg2.escAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg2-escAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg2.escAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('lbl-tg2-spExt').textContent = tg2.spExt.toFixed(2) + ' bar';
+      document.getElementById('lbl-tg2-spEsc').textContent = tg2.spEsc.toFixed(2) + ' bar';
+
+      document.getElementById('btn-tg3-admAuto').textContent = tg3.admAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg3-admAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg3.admAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('btn-tg3-extAuto').textContent = tg3.extAuto ? 'AUTO (1)' : 'MAN (0)';
+      document.getElementById('btn-tg3-extAuto').className = `px-2 py-0.5 mono text-[11px] rounded font-bold ${tg3.extAuto ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`;
+      document.getElementById('lbl-tg3-spAdm').textContent = tg3.spAdm.toFixed(2) + ' bar';
+      document.getElementById('lbl-tg3-spExt').textContent = tg3.spExt.toFixed(2) + ' bar';
+
+      document.getElementById('card-tg1-ext').textContent = tg1.extFlow.toFixed(1) + ' t/h';
+      document.getElementById('card-tg1-cond').textContent = tg1.condFlow.toFixed(1) + ' t/h';
+      document.getElementById('card-tg2-ext').textContent = tg2.extFlow.toFixed(1) + ' t/h';
+      document.getElementById('card-tg2-esc').textContent = tg2.escFlow.toFixed(1) + ' t/h';
+      document.getElementById('card-tg3-ext').textContent = tg3.extFlow.toFixed(1) + ' t/h';
+      document.getElementById('card-tg3-cond').textContent = `${tg3.condFlow.toFixed(0)} / ${tg3.sangFlow.toFixed(0)} t/h`;
+
+      // Aba 2: Setpoints Base e Cascata
+      document.getElementById('lbl-base-vsa').textContent = state.baseSP.vsa.toFixed(2) + ' bar';
+      document.getElementById('src-sp-vsa').textContent = state.srcSpVSA || 'TG-3 (PY0030)';
+      document.getElementById('calc-sp-vsa').textContent = (state.calcSpVSA || state.baseSP.vsa).toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0012').textContent = c['PC-0012'].spR.toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0013').textContent = c['PC-0013'].spR.toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0014').textContent = c['PC-0014'].spR.toFixed(2) + ' bar';
+
+      document.getElementById('lbl-base-vum').textContent = state.baseSP.vum.toFixed(2) + ' bar';
+      document.getElementById('src-sp-vum').textContent = state.srcSpVUM || 'TG-3 (PY0210A)';
+      document.getElementById('calc-sp-vum').textContent = (state.calcSpVUM || state.baseSP.vum).toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0034').textContent = c['PC-0034'].spR.toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0035').textContent = c['PC-0035'].spR.toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0036').textContent = c['PC-0036'].spR.toFixed(2) + ' bar';
+
+      document.getElementById('lbl-base-vub').textContent = state.baseSP.vub.toFixed(2) + ' bar';
+      document.getElementById('src-sp-vub').textContent = state.srcSpVUB || 'TG-1 (PY0210A)';
+      document.getElementById('calc-sp-pc0040').textContent = c['PC-0040'].spR.toFixed(2) + ' bar';
+      document.getElementById('calc-sp-pc0037').textContent = `${c['PC-0037'].spR.toFixed(2)} / ${c['PC-0038'].spR.toFixed(2)} / ${c['PC-0039'].spR.toFixed(2)}`;
+      document.getElementById('calc-sp-pc0060').textContent = `${c['PC-0060'].spR.toFixed(2)} / ${c['PC-0061'].spR.toFixed(2)} bar`;
+
+      document.getElementById('mr-output-val').textContent = state.midRange.output.toFixed(1) + '%';
+      document.getElementById('mr-status-badge').textContent = state.midRange.active ? 'ATIVO (SUBINDO)' : (state.midRange.output > 0 ? 'RETIDO / DESCENDO' : 'INATIVO');
+      ['PV-0037', 'PV-0038', 'PV-0039'].forEach(pv => {
+        const isSel = state.midRange['sel' + pv.replace('-', '')];
+        const btn = document.getElementById(`btn-mr-${pv}`);
+        btn.textContent = isSel ? 'LIGA = 1' : 'DESLIGA = 0';
+        btn.className = isSel
+          ? 'px-3 py-1.5 rounded mono text-xs font-bold bg-emerald-600 text-white'
+          : 'px-3 py-1.5 rounded mono text-xs font-bold bg-slate-700 text-slate-300';
+      });
+
+      if (!document.getElementById('view-cascades').classList.contains('hidden')) {
+        const tbody = document.getElementById('controllers-table-body');
+        tbody.innerHTML = Object.entries(c).map(([tag, ctrl]) => {
+          const sp = ctrl.spRemote ? ctrl.spR : ctrl.spLocal;
+          const stText = ctrl.fcCmd ? 'TRIP FORCE' : (ctrl.maxLim <= 0 ? 'BLOQUEADO' : (ctrl.maxLim < 100 ? 'LIM TH' : 'OK'));
+          const stClass = ctrl.fcCmd || ctrl.maxLim <= 0 ? 'text-red-400 font-bold' : (ctrl.maxLim < 100 ? 'text-amber-400' : 'text-emerald-400');
+          return `
+            <tr onclick="openFaceplate('${tag}')" class="hover:bg-slate-800/70 cursor-pointer transition">
+              <td class="py-2 px-2 font-bold text-sky-400">${tag}</td>
+              <td class="py-2 px-2 font-sans text-slate-200">${ctrl.desc}</td>
+              <td class="py-2 px-2"><span class="px-1.5 py-0.5 rounded text-[10px] ${ctrl.mode === 'AUTO' ? 'bg-sky-500/20 text-sky-300' : 'bg-amber-500/20 text-amber-300'}">${ctrl.mode}</span></td>
+              <td class="py-2 px-2 text-white">${ctrl.pv.toFixed(2)} ${ctrl.unit}</td>
+              <td class="py-2 px-2 text-sky-300">${sp.toFixed(2)} ${ctrl.unit}</td>
+              <td class="py-2 px-2 text-amber-300">${ctrl.out.toFixed(1)}%</td>
+              <td class="py-2 px-2 text-slate-200">${ctrl.valvePos.toFixed(1)}%</td>
+              <td class="py-2 px-2 text-slate-200">${ctrl.flowOut.toFixed(1)}</td>
+              <td class="py-2 px-2 ${stClass}">${stText}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Aba 3: MWC-0060 e Votação 2oo3
+      document.getElementById('lbl-meta-exp').textContent = state.mwc.metaInicial.toFixed(1) + ' MW';
+      document.getElementById('mwc-mw-inst').textContent = state.grid.mwExportInst.toFixed(1) + ' MW';
+      document.getElementById('mwc-time').textContent = `${state.mwc.timeSec.toFixed(0)}s (Int ${state.mwc.interval}/3)`;
+      document.getElementById('mwc-mw-avg').textContent = state.mwc.mwAvg.toFixed(1) + ' MW';
+      document.getElementById('mwc-mw-proj').textContent = state.mwc.mwProj.toFixed(1) + ' MW';
+      document.getElementById('mwc-meta-corr').textContent = state.mwc.metaCorrigida.toFixed(2) + ' MW';
+      document.getElementById('mwc-spr').textContent = c['MWC-0060'].spR.toFixed(2) + ' MW';
+      document.getElementById('mwc-times').textContent = `${state.mwc.timeSec.toFixed(0)}s / ${(300 - state.mwc.timeSec).toFixed(0)}s`;
+      document.getElementById('mwc-con').textContent = c['MWC-0060'].out.toFixed(1) + '%';
+
+      ['PV-0012', 'PV-0013', 'PV-0014'].forEach(pv => {
+        const isSel = state.mwc['sel' + pv.replace('-', '')];
+        const btn = document.getElementById(`btn-mwc-${pv}`);
+        btn.textContent = isSel ? 'LIGA = 1' : 'DESLIGA = 0';
+        btn.className = isSel
+          ? 'px-2.5 py-1 rounded mono text-[11px] font-bold bg-emerald-600 text-white'
+          : 'px-2.5 py-1 rounded mono text-[11px] font-bold bg-slate-700 text-slate-300';
+      });
+
+      Object.entries(state.tempSensors).forEach(([pvTag, ts]) => {
+        const calcEl = document.getElementById(`tv-calc-${pvTag}`);
+        if (calcEl) {
+          calcEl.textContent = ts.calc.toFixed(1) + '°C';
+          document.getElementById(`tv-a-${pvTag}`).textContent = ts.a.toFixed(0);
+          document.getElementById(`tv-b-${pvTag}`).textContent = ts.b.toFixed(0);
+          document.getElementById(`tv-c-${pvTag}`).textContent = ts.c.toFixed(0);
+        }
+      });
+
+      // Alarmes Ativos
+      const alarms = [];
+      if (state.grid.islanded) alarms.push('⚡ ILHAMENTO ATIVO (TRIP CONCESSIONÁRIA)');
+      if (tg1.tripped) alarms.push('🔴 TRIP TG-1');
+      if (tg2.tripped) alarms.push('🔴 TRIP TG-2');
+      if (tg3.tripped) alarms.push('🔴 TRIP TG-3');
+      if (h.vsa.p > 103.0) alarms.push('⚠️ PRESSÃO ALTA VSA (>103 bar)');
+      if (h.vsa.p < 93.0) alarms.push('⚠️ PRESSÃO BAIXA VSA (<93 bar)');
+      Object.entries(state.tempSensors).forEach(([pv, ts]) => {
+        if (ts.calc >= 270) {
+          const tRem = Math.max(0, 4.0 - (ts.highTimer || 0));
+          if (tRem > 0) {
+            alarms.push(`⚠️ ALARME TH ${pv} (${ts.calc.toFixed(0)}°C) - FECHAMENTO EM ${tRem.toFixed(1)}s`);
+          } else {
+            alarms.push(`🔥 TRIP TEMPERATURA ALTA ${pv} (${ts.calc.toFixed(0)}°C) - VALVULA E SPRAY FECHADOS!`);
+          }
+        }
+      });
+
+      const alarmBar = document.getElementById('active-alarms-bar');
+      if (alarms.length === 0) {
+        alarmBar.innerHTML = `<span class="px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono font-semibold">SISTEMA EM EQUILÍBRIO NOMINAL • SEM ALARMES ATIVOS</span>`;
+      } else {
+        alarmBar.innerHTML = alarms.map(a => `<span class="px-2.5 py-0.5 rounded bg-red-600/30 text-red-200 border border-red-500 mono font-bold alarm-blink">${a}</span>`).join('');
+      }
+
+      if (activeFaceplateTag) syncFaceplateUI();
+    }
+
+    // ==================== GRÁFICOS DE TENDÊNCIA EM TEMPO REAL ====================
+    function pushTrends() {
+      if (simSpeed === 0) return;
+      const push = (arr, v) => { arr.push(v); if (arr.length > historyLen) arr.shift(); };
+      push(trends.vsa, state.headers.vsa.p);
+      push(trends.vum, state.headers.vum.p);
+      push(trends.vub, state.headers.vub.p);
+
+      const ms = state.massSummary || { genVSA: 925, consVSA: 925 };
+      push(trends.genSteam, ms.genVSA);
+      push(trends.consSteam, ms.consVSA);
+      push(trends.mwExp, state.grid.mwExportInst);
+
+      document.getElementById('trd-val-pressures').textContent =
+        `VSA: ${state.headers.vsa.p.toFixed(2)} | VUM: ${state.headers.vum.p.toFixed(2)} | VUB: ${state.headers.vub.p.toFixed(2)} bar`;
+      document.getElementById('trd-val-flows').textContent =
+        `Ger: ${ms.genVSA.toFixed(0)} | Cons: ${ms.consVSA.toFixed(0)} t/h | Exp: ${state.grid.mwExportInst.toFixed(1)} MW`;
+
+      if (!document.getElementById('view-synoptic').classList.contains('hidden')) {
+        drawAllCharts();
+      }
+    }
+
+    function drawNormalizedChart(canvasId, seriesList) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width || 560;
+      canvas.height = rect.height || 176;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        const y = (h / 4) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      seriesList.forEach(s => {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.width || 2;
+        ctx.setLineDash(s.dash || []);
+        ctx.beginPath();
+        s.data.forEach((val, idx) => {
+          const x = (idx / (historyLen - 1)) * w;
+          const norm = (val - s.min) / Math.max(0.01, s.max - s.min);
+          const y = h - Math.max(0.08, Math.min(0.92, norm)) * h;
+          if (idx === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+
+    function drawAllCharts() {
+      drawNormalizedChart('chart-pressures', [
+        { data: trends.vsa, color: '#ef4444', width: 2.2, min: 0, max: 105 },
+        { data: trends.vum, color: '#f59e0b', width: 2.0, min: 0, max: 11.5 },
+        { data: trends.vub, color: '#06b6d4', width: 2.0, min: 0, max: 6.5 }
+      ]);
+
+      drawNormalizedChart('chart-balance', [
+        { data: trends.genSteam, color: '#f87171', width: 2.2, min: 200, max: 1400 },
+        { data: trends.consSteam, color: '#38bdf8', width: 2.0, dash: [5, 3], min: 200, max: 1400 },
+        { data: trends.mwExp, color: '#10b981', width: 2.2, min: 0, max: 250 }
+      ]);
+    }
+
+    // ==================== INICIALIZAÇÃO ====================
+    window.onload = function () {
+      renderTempVotingCards();
+      simulationStep(0.01);
+      updateUI();
+      drawAllCharts();
+
+      setInterval(() => {
+        simulationStep(0.2);
+        updateUI();
+      }, 200);
+
+      setInterval(pushTrends, 1000);
+
+      window.addEventListener('resize', () => {
+        if (!document.getElementById('view-synoptic').classList.contains('hidden')) drawAllCharts();
+      });
+    };
+  </script>
+</body>
+</html>
