@@ -1703,9 +1703,16 @@
       }
       state.calcSpVSA = spBaseVSA;
       state.srcSpVSA = srcVSA;
+      // ==================== CORREÇÃO DA CASCATA VSA ====================
       c['PC-0012'].spR = spBaseVSA + 1.5;
-      c['PC-0013'].spR = spBaseVSA + 2.0;
-      c['PC-0014'].spR = spBaseVSA + 2.5;
+
+      // PC-0013: se a PC-0012 estiver bloqueada, assume o spR dela; senão, calcula Base + 2.0
+      const pv12Bloqueada = !state.ov['OV-0007'] || c['PC-0012'].maxLim <= 0;
+      c['PC-0013'].spR = pv12Bloqueada ? c['PC-0012'].spR : (spBaseVSA + 2.0);
+      
+      // PC-0014: se a PC-0013 estiver bloqueada, assume o spR dela; senão, calcula Base + 2.5
+      const pv13Bloqueada = !state.ov['OV-0008'] || c['PC-0013'].maxLim <= 0;
+      c['PC-0014'].spR = pv13Bloqueada ? c['PC-0013'].spR : (spBaseVSA + 2.5);
 
       // VUM (Fls. 7, 8, 12) - Escalonamento Exato conforme P&ID
       let spBaseVUM = state.baseSP.vum;
